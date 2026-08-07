@@ -1,3 +1,14 @@
+from . import routing, torrent
+from .youtube import is_youtube
+
+FILE_EXTENSIONS = frozenset(
+    {
+        "iso", "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "exe", "dmg",
+        "pkg", "deb", "rpm", "msi", "img", "bin", "apk", "epub", "pdf",
+        "mp4", "mkv", "webm", "avi", "mov", "mp3", "m4a", "flac", "wav",
+    }
+)
+
 _classes = None
 
 
@@ -44,3 +55,32 @@ def working(url: str) -> bool:
     """False only when yt-dlp itself marks the matching extractor broken."""
     found = extractor_for(url)
     return True if found is None else getattr(found, "_WORKING", True)
+
+
+def looks_like_file(url: str) -> bool:
+    """Whether this address plainly names a file to fetch.
+
+    Deliberately narrow: only extensions nothing streams from. A handle may
+    carry a dot, so treating any trailing .word as an extension would route a
+    profile page to aria2.
+    """
+    if torrent.is_torrent(url):
+        return True
+    name = routing.filename_from_url(url)
+    if "." not in name:
+        return False
+    return name.rsplit(".", 1)[-1].lower() in FILE_EXTENSIONS
+
+
+def handles(url: str) -> bool:
+    """Whether yt-dlp owns this address rather than aria2.
+
+    Three tiers, first answer wins. The YouTube tier is not an optimisation:
+    youtu.be links carrying ?list= match no extractor at all, so asking
+    yt-dlp about one gets the wrong answer.
+    """
+    if is_youtube(url):
+        return True
+    if looks_like_file(url):
+        return False
+    return extractor_for(url) is not None

@@ -94,3 +94,55 @@ def test_a_missing_yt_dlp_leaves_everything_unclaimed(monkeypatch):
     monkeypatch.setattr(ytdlp, "_classes", None)
     monkeypatch.setattr(ytdlp, "_load", lambda: [])
     assert ytdlp.extractor_for("https://fake.test/a") is None
+
+
+def test_a_youtube_url_is_handled_without_asking():
+    assert ytdlp.handles("https://www.youtube.com/watch?v=dQw4w9WgXcQ") is True
+
+
+def test_a_youtube_link_carrying_a_list_is_still_handled():
+    """Regression: youtu.be/ID?list= matches no extractor at all — every one
+    of the 1751 declines it. Tier 3 would send a YouTube link to aria2, which
+    would fetch an HTML page. Tier 1 is what stops that."""
+    assert ytdlp.handles("https://youtu.be/dQw4w9WgXcQ?list=PLxyz") is True
+
+
+def test_a_plain_file_is_not_handled():
+    assert ytdlp.handles("https://example.com/ubuntu.iso") is False
+
+
+def test_a_magnet_is_not_handled():
+    assert ytdlp.handles("magnet:?xt=urn:btih:abc") is False
+
+
+def test_a_torrent_file_is_not_handled():
+    assert ytdlp.handles("https://example.com/thing.torrent") is False
+
+
+def test_an_extractor_url_is_handled():
+    assert ytdlp.handles("https://fake.test/thing") is True
+
+
+def test_a_url_with_a_dot_in_its_last_segment_is_not_mistaken_for_a_file():
+    """A handle can hold a dot. Treating it as an extension would route the
+    profile to aria2 and download an HTML page."""
+    assert ytdlp.looks_like_file("https://fake.test/@user.name") is False
+
+
+def test_a_file_url_short_circuits_before_the_extractor_list(monkeypatch):
+    """Tier 2 exists so a plain download never pays to build 1751 classes."""
+
+    def explode():
+        raise AssertionError("tier 3 was reached for a plain file")
+
+    monkeypatch.setattr(ytdlp, "_classes", None)
+    monkeypatch.setattr(ytdlp, "_load", explode)
+    assert ytdlp.handles("https://example.com/ubuntu.iso") is False
+
+
+def test_a_page_url_is_not_treated_as_a_file():
+    assert ytdlp.looks_like_file("https://fake.test/watch") is False
+
+
+def test_a_trailing_slash_url_is_not_treated_as_a_file():
+    assert ytdlp.looks_like_file("https://fake.test/p/Cxyz/") is False
