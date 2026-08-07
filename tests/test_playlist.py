@@ -227,3 +227,79 @@ def test_expand_reports_how_many_were_unavailable(monkeypatch):
     listing = playlist.expand("https://youtube.com/playlist?list=x", "", "")
     assert len(listing.entries) == 1
     assert listing.unavailable == 1
+
+
+from dl import ytdlp as ytdlp_module
+
+
+class OnePer:
+    IE_NAME = "one"
+    _RETURN_TYPE = "video"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://one.test/")
+
+
+class ManyPer:
+    IE_NAME = "many"
+    _RETURN_TYPE = "playlist"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://many.test/")
+
+
+class EitherPer:
+    IE_NAME = "either"
+    _RETURN_TYPE = "any"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://either.test/")
+
+
+@pytest.fixture
+def extractors(monkeypatch):
+    monkeypatch.setattr(ytdlp_module, "_classes", None)
+    monkeypatch.setattr(ytdlp_module, "_load", lambda: [OnePer, ManyPer, EitherPer])
+    yield
+    ytdlp_module._classes = None
+
+
+def test_a_youtube_playlist_is_a_collection(extractors):
+    url = "https://www.youtube.com/playlist?list=PLxyz"
+    assert playlist.classify(url) == playlist.COLLECTION
+
+
+def test_a_video_copied_from_inside_a_playlist_stays_single(extractors):
+    """Regression: yt-dlp resolves this to youtube:tab with return type
+    'any', so deferring to it would queue the whole playlist behind one
+    video the user copied while watching it."""
+    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLxyz&index=4"
+    assert playlist.classify(url) == playlist.SINGLE
+
+
+def test_an_extractor_that_yields_many_is_a_collection(extractors):
+    assert playlist.classify("https://many.test/set") == playlist.COLLECTION
+
+
+def test_an_extractor_that_yields_one_is_single(extractors):
+    assert playlist.classify("https://one.test/track") == playlist.SINGLE
+
+
+def test_an_extractor_that_will_not_say_is_unknown(extractors):
+    """Instagram and Reddit sit here: a post may be one item or a carousel."""
+    assert playlist.classify("https://either.test/p/abc") == playlist.UNKNOWN
+
+
+def test_an_unclaimed_url_is_single(extractors):
+    assert playlist.classify("https://example.com/a.iso") == playlist.SINGLE
+
+
+def test_is_collection_still_answers_for_youtube(extractors):
+    assert playlist.is_collection("https://www.youtube.com/playlist?list=PL") is True
+    assert playlist.is_collection("https://www.youtube.com/watch?v=abc123") is False

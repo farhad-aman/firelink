@@ -45,6 +45,28 @@ def is_collection(url: str) -> bool:
     return any(path.startswith(prefix) for prefix in _CHANNEL_PREFIXES)
 
 
+COLLECTION = "collection"
+SINGLE = "single"
+UNKNOWN = "unknown"
+
+
+def classify(url: str) -> str:
+    """Whether this address means many items, one, or cannot be told apart.
+
+    YouTube keeps its own rules because they are more accurate here than
+    yt-dlp's: a watch link carrying &list= resolves to youtube:tab, which
+    would expand a whole playlist from one copied video.
+    """
+    if is_youtube(url):
+        return COLLECTION if is_collection(url) else SINGLE
+    kind = ytdlp.return_type(url)
+    if kind == "playlist":
+        return COLLECTION
+    if kind is None or kind == "video":
+        return SINGLE
+    return UNKNOWN
+
+
 def list_command(url: str, proxy: str, cookies_from: str, limit: int = 0) -> list[str]:
     """Ask yt-dlp what is in there, without extracting each video.
 
