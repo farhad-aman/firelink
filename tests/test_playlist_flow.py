@@ -403,3 +403,35 @@ def test_the_count_chooser_returns_every_index():
 def test_the_newest_button_returns_the_first_n_indices():
     screen = PlaylistScreen("Channel", make_entries(300), newest=100)
     assert screen.newest_indices() == list(range(100))
+
+
+class BrokenSite:
+    """yt-dlp marks 137 of its extractors broken, instagram:user among them."""
+
+    IE_NAME = "broken"
+    _RETURN_TYPE = "video"
+    _WORKING = False
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://broken.test/")
+
+
+async def test_a_broken_extractor_is_refused_before_anything_is_fetched(
+    cfg, spawned, monkeypatch
+):
+    from dl import ytdlp
+
+    monkeypatch.setattr(ytdlp, "_classes", None)
+    monkeypatch.setattr(ytdlp, "_load", lambda: [BrokenSite])
+    notes = []
+
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
+        app._accept(["https://broken.test/thing"])
+        await settle(pilot)
+        assert spawned == []
+        assert any("broken" in note for note in notes)
+    ytdlp._classes = None

@@ -1,11 +1,13 @@
 import shutil
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 from . import routing, torrent
 from .youtube import is_youtube
 
 BINARY = "yt-dlp"
+STALE_DAYS = 60
 
 FILE_EXTENSIONS = frozenset(
     {
@@ -81,6 +83,36 @@ def binary() -> str:
 
 def available() -> bool:
     return _bundled().exists() or shutil.which(BINARY) is not None
+
+
+def installed_version() -> str:
+    try:
+        from yt_dlp.version import __version__
+    except ImportError:
+        return ""
+    return __version__
+
+
+def age_days() -> int | None:
+    """How old the installed yt-dlp is. Its version is its release date."""
+    raw = installed_version()
+    try:
+        released = datetime.strptime(raw[:10], "%Y.%m.%d").date()
+    except (ValueError, TypeError):
+        return None
+    return (date.today() - released).days
+
+
+def staleness_advice() -> str:
+    """Said only when it is old enough to be the reason a site broke.
+
+    firelink installs its own yt-dlp, so `brew upgrade` no longer reaches it
+    and a copy left behind fails as sites changing rather than as a version.
+    """
+    days = age_days()
+    if days is None or days < STALE_DAYS:
+        return ""
+    return f"yt-dlp is {days} days old — sites break silently; run `make install`"
 
 
 def looks_like_file(url: str) -> bool:

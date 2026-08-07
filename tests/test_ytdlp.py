@@ -206,3 +206,37 @@ def test_the_command_line_sends_an_unlisted_site_to_yt_dlp(monkeypatch):
     monkeypatch.setattr(ytdlp, "_load", lambda: [Fake])
     assert entry.ytdlp.handles("https://fake.test/track") is True
     assert entry.ytdlp.handles("https://example.com/a.iso") is False
+
+
+def test_a_fresh_yt_dlp_needs_no_advice(monkeypatch):
+    monkeypatch.setattr(ytdlp, "age_days", lambda: 3)
+    assert ytdlp.staleness_advice() == ""
+
+
+def test_a_stale_yt_dlp_says_how_to_update(monkeypatch):
+    """firelink owns yt-dlp now, so brew upgrade no longer touches it. A
+    silent stale copy shows up as sites mysteriously breaking."""
+    monkeypatch.setattr(ytdlp, "age_days", lambda: 200)
+    advice = ytdlp.staleness_advice()
+    assert "make install" in advice
+    assert "200" in advice
+
+
+def test_an_unreadable_version_gives_no_advice(monkeypatch):
+    monkeypatch.setattr(ytdlp, "age_days", lambda: None)
+    assert ytdlp.staleness_advice() == ""
+
+
+def test_the_version_date_is_read_from_yt_dlp(monkeypatch):
+    monkeypatch.setattr(ytdlp, "installed_version", lambda: "2026.07.04")
+    assert ytdlp.age_days() is not None
+
+
+def test_a_nonsense_version_has_no_age(monkeypatch):
+    monkeypatch.setattr(ytdlp, "installed_version", lambda: "unknown")
+    assert ytdlp.age_days() is None
+
+
+def test_the_day_before_the_limit_is_still_quiet(monkeypatch):
+    monkeypatch.setattr(ytdlp, "age_days", lambda: ytdlp.STALE_DAYS - 1)
+    assert ytdlp.staleness_advice() == ""

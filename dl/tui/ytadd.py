@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from .. import duplicates, history, playlist, routing, ytjob, ytrun
+from .. import duplicates, history, playlist, routing, ytdlp, ytjob, ytrun
 from ..config import STATE_DIR, Config
 from ..format import human_bytes
 from .modals import ConfirmModal, DuplicateModal
@@ -62,6 +62,13 @@ class YouTubeAdder:
             # streams and fails at the last step, leaving a .webm where the
             # file you asked for should be.
             self.failed = ytjob.FFMPEG_ADVICE
+            self._done()
+            return
+        broken = [url for url in self.urls if not ytdlp.working(url)]
+        if broken:
+            # yt-dlp ships 137 extractors it marks broken. Saying so now beats
+            # a minute of downloading nothing.
+            self.failed = f"yt-dlp marks this site's extractor broken: {broken[0]}"
             self._done()
             return
         collections = [
