@@ -64,7 +64,11 @@ class YouTubeAdder:
             self.failed = ytjob.FFMPEG_ADVICE
             self._done()
             return
-        collections = [url for url in self.urls if playlist.is_collection(url)]
+        collections = [
+            url
+            for url in self.urls
+            if playlist.classify(url) in (playlist.COLLECTION, playlist.UNKNOWN)
+        ]
         if collections and not self.shared:
             self.urls = [url for url in self.urls if url not in collections]
             self.host.run_worker(self._open_collection(collections[0]), exclusive=False)
@@ -76,6 +80,9 @@ class YouTubeAdder:
 
         Listing is flat — one request for the whole thing rather than one per
         video — so this is a moment even for a long channel.
+
+        Also where an address yt-dlp would not classify gets settled: a post
+        that turns out to hold one item was never a collection.
         """
         try:
             listing = await asyncio.to_thread(
@@ -93,6 +100,11 @@ class YouTubeAdder:
             self._done()
             return
         entries = listing.entries
+        if len(entries) == 1:
+            self.urls = [entries[0].url]
+            self.titles = {entries[0].url: entries[0].title}
+            self._ask_options(0)
+            return
 
         def decided(count: int | None) -> None:
             if not count:

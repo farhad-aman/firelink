@@ -288,7 +288,15 @@ async def test_expanding_waits_as_long_as_a_probe_would(cfg, monkeypatch, spawne
 
     def record(url, proxy, cookies, limit=0, timeout=None):
         seen["timeout"] = timeout
-        return playlist.Listing([playlist.Entry("https://youtu.be/v1", "One")], 0)
+        # Two, because one entry means it was never a collection and the
+        # screen this test waits on would rightly be skipped.
+        return playlist.Listing(
+            [
+                playlist.Entry("https://youtu.be/v1", "One"),
+                playlist.Entry("https://youtu.be/v2", "Two"),
+            ],
+            0,
+        )
 
     monkeypatch.setattr(ytadd.playlist, "expand", record)
     app = DlApp(config_module.replace(cfg, probe_timeout=600), FakeClient())
@@ -296,3 +304,70 @@ async def test_expanding_waits_as_long_as_a_probe_would(cfg, monkeypatch, spawne
         await pilot.pause()
         await open_playlist(app, pilot)
     assert seen["timeout"] == 600
+
+
+AMBIGUOUS = "https://either.test/p/abc"
+
+
+class EitherWay:
+    """Stands in for Instagram and Reddit: yt-dlp will not say in advance
+    whether one of these addresses holds one item or twenty."""
+
+    IE_NAME = "either"
+    _RETURN_TYPE = "any"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://either.test/")
+
+
+@pytest.fixture
+def ambiguous_site(monkeypatch):
+    from dl import ytdlp
+
+    monkeypatch.setattr(ytdlp, "_classes", None)
+    monkeypatch.setattr(ytdlp, "_load", lambda: [EitherWay])
+    yield
+    ytdlp._classes = None
+
+
+async def settle(pilot, times=30):
+    for _ in range(times):
+        await pilot.pause()
+
+
+async def test_an_ambiguous_url_holding_one_item_skips_the_collection_screen(
+    cfg, spawned, ambiguous_site, monkeypatch
+):
+    """An Instagram post is 'any' until listed. One entry means it was never
+    a collection, and a "download all 1?" screen would be noise."""
+    one = [playlist.Entry(AMBIGUOUS, "Just One")]
+    monkeypatch.setattr(ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(one, 0))
+
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept([AMBIGUOUS])
+        await settle(pilot)
+        assert not any(
+            type(s).__name__ == "PlaylistScreen" for s in app.screen_stack
+        )
+        assert type(app.screen).__name__ == "YouTubeOptionsScreen"
+
+
+async def test_an_ambiguous_url_holding_many_shows_the_collection_screen(
+    cfg, spawned, ambiguous_site, monkeypatch
+):
+    many = [
+        playlist.Entry("https://either.test/p/a", "One"),
+        playlist.Entry("https://either.test/p/b", "Two"),
+    ]
+    monkeypatch.setattr(ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(many, 0))
+
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept([AMBIGUOUS])
+        await settle(pilot)
+        assert any(type(s).__name__ == "PlaylistScreen" for s in app.screen_stack)
