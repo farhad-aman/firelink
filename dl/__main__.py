@@ -1,9 +1,8 @@
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
-from . import checksum, cli, config, daemon, routing, youtube
+from . import checksum, cli, config, daemon, routing, ytdlp, youtube
 from .config import CONFIG_FILE
 from .rpc import Aria2Error, Aria2Unreachable
 from .tui.preview import Request, run_preview
@@ -93,8 +92,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def _run_youtube(cfg, urls: list[str], proxy: bool, interactive: bool) -> int:
     """YouTube needs yt-dlp: aria2 cannot resolve a watch page into streams."""
-    if shutil.which("yt-dlp") is None:
-        print("dl: yt-dlp not found — brew install yt-dlp", file=sys.stderr)
+    if not ytdlp.available():
+        print("dl: yt-dlp not found — run `make install`", file=sys.stderr)
         return 1
     if not interactive:
         print("dl: YouTube downloads need a terminal to choose quality", file=sys.stderr)

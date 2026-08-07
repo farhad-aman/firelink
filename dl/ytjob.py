@@ -8,6 +8,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
+from . import ytdlp
 from .youtube import Choices, build_args, burns_in
 
 SUBTITLE_SUFFIXES = (".vtt", ".srt", ".ass")
@@ -81,7 +82,7 @@ def result_marker(state: Path, job: dict) -> Path:
 
 def command(job: dict, state: Path) -> list[str]:
     """yt-dlp invocation for this job, transfers delegated to aria2c."""
-    argv = ["yt-dlp", "--newline", "--no-colors", "--ignore-errors"]
+    argv = [ytdlp.binary(), "--newline", "--no-colors", "--ignore-errors"]
     argv += ["--downloader", "aria2c"]
     argv += ["--downloader-args", "aria2c:-x16 -s16 -k1M --summary-interval=1"]
     if job.get("proxy"):
@@ -106,7 +107,7 @@ def probe_command(job: dict) -> list[str]:
     Without a total there is no percentage and no bar, and the row shows a URL
     instead of a title until the moment it finishes.
     """
-    argv = ["yt-dlp", "--no-warnings", "--simulate", "--no-playlist"]
+    argv = [ytdlp.binary(), "--no-warnings", "--simulate", "--no-playlist"]
     if job.get("proxy"):
         argv += ["--proxy", job["proxy"]]
     if job.get("cookies_from"):

@@ -1,11 +1,10 @@
-import shutil
 import subprocess
 import sys
 import time
 from collections import deque
 from pathlib import Path
 
-from . import cli, duplicates, history, instance, routing, theme, youtube
+from . import cli, duplicates, history, instance, routing, theme, ytdlp, youtube
 from .config import STATE_DIR, Config
 from .destinations import ensure_writable
 from .rpc import Aria2Error, Aria2Unreachable
@@ -88,7 +87,7 @@ def poll_once(text: str, seen: deque, cfg: Config, client) -> bool:
 def _catch_youtube(url: str, cfg: Config) -> bool:
     """aria2 cannot resolve a watch page into streams — left to it, a caught
     YouTube link is saved as the HTML of the page."""
-    if shutil.which("yt-dlp") is None:
+    if not ytdlp.available():
         print(f"  {_g('⚠', cfg)}  skipped  {url}  — yt-dlp not found")
         return False
 

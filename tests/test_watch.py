@@ -131,7 +131,7 @@ def test_a_youtube_link_goes_to_yt_dlp_not_aria2(cfg, monkeypatch, tmp_path):
     spawned = []
     monkeypatch.setattr("dl.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
     monkeypatch.setattr("dl.ytrun.probe", lambda job, timeout=None: ("A Clip", str(tmp_path / "A Clip.mp4"), 99))
-    monkeypatch.setattr(watch.shutil, "which", lambda name: "/usr/local/bin/yt-dlp")
+    monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     client = FakeClient()
     assert watch.poll_once("https://youtu.be/abc", deque(maxlen=20), cfg, client) is True
@@ -144,7 +144,7 @@ def test_a_caught_youtube_link_on_a_listed_domain_is_proxied(cfg, monkeypatch, t
     spawned = []
     monkeypatch.setattr("dl.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
     monkeypatch.setattr("dl.ytrun.probe", lambda job, timeout=None: ("A Clip", str(tmp_path / "A Clip.mp4"), 99))
-    monkeypatch.setattr(watch.shutil, "which", lambda name: "/usr/local/bin/yt-dlp")
+    monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     proxied = config.replace(cfg, proxy_domains=("youtu.be",))
     watch.poll_once("https://youtu.be/abc", deque(maxlen=20), proxied, FakeClient())
@@ -157,14 +157,14 @@ def test_a_youtube_video_already_on_disk_is_not_fetched_again(cfg, monkeypatch, 
     landed = tmp_path / "A Clip.mp4"
     landed.write_bytes(b"already here")
     monkeypatch.setattr("dl.ytrun.probe", lambda job, timeout=None: ("A Clip", str(landed), 99))
-    monkeypatch.setattr(watch.shutil, "which", lambda name: "/usr/local/bin/yt-dlp")
+    monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     assert watch.poll_once("https://youtu.be/abc", deque(maxlen=20), cfg, FakeClient()) is False
     assert spawned == []
 
 
 def test_a_youtube_link_without_yt_dlp_says_so(cfg, monkeypatch, capsys):
-    monkeypatch.setattr(watch.shutil, "which", lambda name: None)
+    monkeypatch.setattr(watch.ytdlp, "available", lambda: False)
     client = FakeClient()
     assert watch.poll_once("https://youtu.be/abc", deque(maxlen=20), cfg, client) is False
     assert client.added == []
@@ -178,7 +178,7 @@ def test_a_youtube_link_it_cannot_check_is_left_alone(cfg, monkeypatch, capsys):
 
     spawned = []
     monkeypatch.setattr("dl.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
-    monkeypatch.setattr(watch.shutil, "which", lambda name: "/usr/local/bin/yt-dlp")
+    monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     def die(job, timeout=None):
         raise ytrun.ProbeFailed("timed out after 180s")

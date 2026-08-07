@@ -146,3 +146,37 @@ def test_a_page_url_is_not_treated_as_a_file():
 
 def test_a_trailing_slash_url_is_not_treated_as_a_file():
     assert ytdlp.looks_like_file("https://fake.test/p/Cxyz/") is False
+
+
+def test_the_bundled_yt_dlp_is_preferred_over_the_one_on_path(monkeypatch, tmp_path):
+    """firelink owns its yt-dlp, and the copy answering what a URL is has to
+    be the copy that fetches it. PATH would hand back Homebrew's instead."""
+    where = tmp_path / "bin"
+    where.mkdir()
+    (where / "yt-dlp").write_text("")
+    monkeypatch.setattr(ytdlp.sys, "executable", str(where / "python"))
+    assert ytdlp.binary() == str(where / "yt-dlp")
+
+
+def test_without_a_bundled_copy_the_name_is_left_to_path(monkeypatch, tmp_path):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setattr(ytdlp.sys, "executable", str(empty / "python"))
+    assert ytdlp.binary() == "yt-dlp"
+
+
+def test_a_bundled_copy_counts_as_available(monkeypatch, tmp_path):
+    where = tmp_path / "bin"
+    where.mkdir()
+    (where / "yt-dlp").write_text("")
+    monkeypatch.setattr(ytdlp.sys, "executable", str(where / "python"))
+    monkeypatch.setattr(ytdlp.shutil, "which", lambda name: None)
+    assert ytdlp.available() is True
+
+
+def test_nothing_anywhere_is_not_available(monkeypatch, tmp_path):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setattr(ytdlp.sys, "executable", str(empty / "python"))
+    monkeypatch.setattr(ytdlp.shutil, "which", lambda name: None)
+    assert ytdlp.available() is False

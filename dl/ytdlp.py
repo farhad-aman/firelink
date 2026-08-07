@@ -1,5 +1,11 @@
+import shutil
+import sys
+from pathlib import Path
+
 from . import routing, torrent
 from .youtube import is_youtube
+
+BINARY = "yt-dlp"
 
 FILE_EXTENSIONS = frozenset(
     {
@@ -55,6 +61,26 @@ def working(url: str) -> bool:
     """False only when yt-dlp itself marks the matching extractor broken."""
     found = extractor_for(url)
     return True if found is None else getattr(found, "_WORKING", True)
+
+
+def _bundled() -> Path:
+    return Path(sys.executable).parent / BINARY
+
+
+def binary() -> str:
+    """The yt-dlp to run.
+
+    firelink installs its own, and the copy answering what a URL is has to be
+    the copy that fetches it. Leaving it to PATH runs whichever yt-dlp the
+    machine happens to have — usually Homebrew's — so the two could drift a
+    release apart and disagree about what a site even offers.
+    """
+    beside = _bundled()
+    return str(beside) if beside.exists() else BINARY
+
+
+def available() -> bool:
+    return _bundled().exists() or shutil.which(BINARY) is not None
 
 
 def looks_like_file(url: str) -> bool:

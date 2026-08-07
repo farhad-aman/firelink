@@ -2,6 +2,7 @@ import subprocess
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
+from . import ytdlp
 from .youtube import is_youtube
 
 SEPARATOR = "\t"
@@ -50,7 +51,7 @@ def list_command(url: str, proxy: str, cookies_from: str, limit: int = 0) -> lis
     Flat means one request for the whole listing rather than one per entry,
     which is the difference between a moment and several minutes.
     """
-    argv = ["yt-dlp", "--flat-playlist", "--no-warnings", "--ignore-errors"]
+    argv = [ytdlp.binary(), "--flat-playlist", "--no-warnings", "--ignore-errors"]
     if proxy:
         argv += ["--proxy", proxy]
     if cookies_from:
