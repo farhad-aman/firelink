@@ -145,12 +145,19 @@ Without this, the packaging decision quietly trades away the update path.
 
 | File | Change |
 |---|---|
-| `dl/youtube.py` → `dl/ytdlp.py` | rename; `is_youtube()` → `handles()`; add `extractor_for()`, `return_type()`, `working()` |
-| `dl/playlist.py` | `is_collection()` gains tiered logic; YouTube branch untouched |
+| `dl/ytdlp.py` | **new** — owns the extractor questions: `handles()`, `extractor_for()`, `return_type()`, `working()`, and the lazy import cache |
+| `dl/youtube.py` | unchanged. Keeps `is_youtube()` as the YouTube override, and the argument building that was always generic |
+| `dl/playlist.py` | `is_collection()` → `classify()` returning collection/single/unknown; YouTube branch untouched |
 | `dl/tui/playlistscreen.py` | second mode: checkbox list under the threshold |
-| `dl/tui/ytadd.py` | consume a selection rather than a count |
-| 6 call sites | `youtube.is_youtube` → `ytdlp.handles` |
+| `dl/tui/ytadd.py` | consume a selection rather than a count; resolve `unknown` by entry count |
+| 4 call sites | `youtube.is_youtube` → `ytdlp.handles` in `__main__.py:191`, `app.py:621-622`, `watch.py:52` |
 | `pyproject.toml` | add `yt-dlp` dependency |
+
+An earlier draft proposed renaming `dl/youtube.py` to `dl/ytdlp.py`. Rejected on
+survey: that module is imported by eight files for `Choices`, `build_args`,
+`burns_in` and `DEFAULTS`, none of which are YouTube-specific or changing. The
+module holds two responsibilities and only one of them is in scope, so the new
+behaviour gets a new file and the old one is left alone.
 
 `build_args()`, the job runner, progress parsing, pausing and cancellation are
 unchanged. They were already site-agnostic — that is why this project is small.
