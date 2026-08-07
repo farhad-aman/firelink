@@ -6,6 +6,7 @@ from dl import playlist
 from dl.tui import app as app_module
 from dl.tui import ytadd
 from dl.tui.app import DlApp
+from dl.tui.playlistscreen import PlaylistScreen
 from tests.test_app import FakeClient
 
 PLAYLIST = "https://www.youtube.com/playlist?list=PLxyz"
@@ -79,7 +80,7 @@ async def test_accepting_asks_quality_once_then_spawns_one_job_per_video(
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
-        await pilot.click("#all")
+        await pilot.click("#selected")
         await pilot.pause()
         assert type(app.screen).__name__ == "YouTubeOptionsScreen"
         await pilot.press("enter")
@@ -103,7 +104,7 @@ async def test_every_job_carries_its_title_from_the_listing(cfg, listing, spawne
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
-        await pilot.click("#all")
+        await pilot.click("#selected")
         await pilot.pause()
         await pilot.press("enter")
         await pilot.pause()
@@ -120,7 +121,7 @@ async def test_every_job_shares_the_one_destination_and_quality(cfg, listing, sp
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
-        await pilot.click("#all")
+        await pilot.click("#selected")
         await pilot.pause()
         await pilot.press("enter")
         await pilot.pause()
@@ -371,3 +372,34 @@ async def test_an_ambiguous_url_holding_many_shows_the_collection_screen(
         app._accept([AMBIGUOUS])
         await settle(pilot)
         assert any(type(s).__name__ == "PlaylistScreen" for s in app.screen_stack)
+
+
+def make_entries(n):
+    return [playlist.Entry(f"https://e.test/{i}", f"Item {i}") for i in range(n)]
+
+
+def test_a_small_collection_offers_a_checkbox_list():
+    screen = PlaylistScreen("Set", make_entries(14), newest=100)
+    assert screen.picks_individually is True
+
+
+def test_a_large_collection_keeps_the_count_chooser():
+    """A channel of thousands is not a list anyone scrolls."""
+    screen = PlaylistScreen("Channel", make_entries(4812), newest=100)
+    assert screen.picks_individually is False
+
+
+def test_the_threshold_is_the_newest_setting():
+    """Exactly at the limit is still small enough to list."""
+    assert PlaylistScreen("x", make_entries(100), newest=100).picks_individually is True
+    assert PlaylistScreen("x", make_entries(101), newest=100).picks_individually is False
+
+
+def test_the_count_chooser_returns_every_index():
+    screen = PlaylistScreen("Channel", make_entries(300), newest=100)
+    assert screen.all_indices() == list(range(300))
+
+
+def test_the_newest_button_returns_the_first_n_indices():
+    screen = PlaylistScreen("Channel", make_entries(300), newest=100)
+    assert screen.newest_indices() == list(range(100))

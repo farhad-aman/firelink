@@ -106,12 +106,12 @@ class YouTubeAdder:
             self._ask_options(0)
             return
 
-        def decided(count: int | None) -> None:
-            if not count:
+        def decided(chosen: list[int] | None) -> None:
+            if not chosen:
                 self.cancelled = True
                 self._done()
                 return
-            taken = entries[:count]
+            taken = [entries[index] for index in chosen]
             self.urls = [entry.url for entry in taken]
             self.titles = {entry.url: entry.title for entry in taken}
             self.shared = True
@@ -120,7 +120,7 @@ class YouTubeAdder:
         self.host.push_screen(
             PlaylistScreen(
                 self.collection_title(url, entries),
-                len(entries),
+                entries,
                 self.cfg.newest,
                 listing.unavailable,
             ),
