@@ -180,3 +180,29 @@ def test_nothing_anywhere_is_not_available(monkeypatch, tmp_path):
     monkeypatch.setattr(ytdlp.sys, "executable", str(empty / "python"))
     monkeypatch.setattr(ytdlp.shutil, "which", lambda name: None)
     assert ytdlp.available() is False
+
+
+def test_the_clipboard_watcher_catches_a_site_that_was_never_listed(monkeypatch):
+    """The whole point of the change: six hostnames used to stand between
+    firelink and every other site yt-dlp supports."""
+    from collections import deque
+
+    from dl import watch
+
+    monkeypatch.setattr(ytdlp, "_classes", None)
+    monkeypatch.setattr(ytdlp, "_load", lambda: [Fake])
+    monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
+
+    caught = []
+    monkeypatch.setattr(watch, "_catch_youtube", lambda url, cfg: caught.append(url) or True)
+    watch.poll_once("https://fake.test/track", deque(maxlen=8), None, None)
+    assert caught == ["https://fake.test/track"]
+
+
+def test_the_command_line_sends_an_unlisted_site_to_yt_dlp(monkeypatch):
+    from dl import __main__ as entry
+
+    monkeypatch.setattr(ytdlp, "_classes", None)
+    monkeypatch.setattr(ytdlp, "_load", lambda: [Fake])
+    assert entry.ytdlp.handles("https://fake.test/track") is True
+    assert entry.ytdlp.handles("https://example.com/a.iso") is False

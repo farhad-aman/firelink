@@ -18,7 +18,7 @@ from .. import (
     sort,
     started,
     theme,
-    youtube,
+    ytdlp,
     ytjob,
     ytqueue,
 )
@@ -618,8 +618,8 @@ class DlApp(App):
         aria2 handed a watch page downloads the HTML, so YouTube URLs go to
         yt-dlp through its own questions instead.
         """
-        watches = [url for url in urls if youtube.is_youtube(url)]
-        direct = [url for url in urls if not youtube.is_youtube(url)]
+        watches = [url for url in urls if ytdlp.handles(url)]
+        direct = [url for url in urls if not ytdlp.handles(url)]
         if not direct:
             self._add_youtube(watches)
             return

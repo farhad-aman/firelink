@@ -48,7 +48,7 @@ def poll_once(text: str, seen: deque, cfg: Config, client) -> bool:
     if not is_downloadable(value) or value in seen:
         return False
     seen.append(value)
-    if youtube.is_youtube(value):
+    if ytdlp.handles(value):
         return _catch_youtube(value, cfg)
 
     name = routing.filename_from_url(value)

@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import checksum, cli, config, daemon, routing, ytdlp, youtube
+from . import checksum, cli, config, daemon, routing, ytdlp
 from .config import CONFIG_FILE
 from .rpc import Aria2Error, Aria2Unreachable
 from .tui.preview import Request, run_preview
@@ -187,7 +187,7 @@ def _run(args: list[str]) -> int:
         return watch.run(cfg, client)
 
     if urls:
-        tube = [u for u in urls if youtube.is_youtube(u)]
+        tube = [u for u in urls if ytdlp.handles(u)]
         urls = [u for u in urls if u not in tube]
         if tube:
             rc = _run_youtube(cfg, tube, proxy, preview and sys.stdout.isatty())
