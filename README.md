@@ -1,8 +1,8 @@
-# `dl` — Download Manager
+# firelink
 
 A terminal download manager with the ergonomics of IDM or Folx: a queue you can
 pause and reorder, per-filetype destination folders, speed limits, and a live
-animated dashboard.
+animated dashboard. The command is `dl`.
 
 `aria2c` does all the work — segmentation, resume, throttling, torrents — while
 `dl` is a stateless JSON-RPC client that owns only routing policy and
@@ -12,12 +12,12 @@ presentation. Nothing runs when you are not downloading.
 
 ```bash
 brew install aria2
-cd downloader && make install
+git clone https://github.com/farhad-aman/firelink.git
+cd firelink && make install
 ```
 
 That creates a private venv at `~/.local/share/dl/venv`, installs `textual` into
-it, and writes a `dl` shim to `~/.local/bin/dl`. System Python is untouched, and
-arsenal's other tools stay dependency-free.
+it, and writes a `dl` shim to `~/.local/bin/dl`. System Python is untouched.
 
 ```bash
 make test        # run the suite
