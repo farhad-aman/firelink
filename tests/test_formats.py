@@ -1,7 +1,19 @@
 import json
 import subprocess
 
+import pytest
+
 from dl import formats
+
+# conftest stubs formats.probe out for the whole suite, so that opening an
+# options screen never reaches the network. These are the tests of probe
+# itself, so they put the real one back.
+REAL_PROBE = formats.probe
+
+
+@pytest.fixture(autouse=True)
+def real_probe(monkeypatch):
+    monkeypatch.setattr(formats, "probe", REAL_PROBE)
 
 # A real Instagram reel: one audio format, three renditions stripped of
 # metadata, and nine video formats reporting abr as 0 rather than None.

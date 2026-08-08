@@ -58,6 +58,19 @@ def isolate_state(tmp_path, monkeypatch):
         monkeypatch.setattr(module, "STATE_DIR", where, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def no_format_probe(monkeypatch):
+    """Never let the options screen ask a real site what it offers.
+
+    The probe runs in a worker as the screen opens, so every test that opens
+    one would otherwise spawn yt-dlp and wait on the network. A test that
+    wants an offer patches this again for itself.
+    """
+    from dl import formats
+
+    monkeypatch.setattr(formats, "probe", lambda *a, **k: None)
+
+
 @pytest.fixture
 def sandbox_cfg(tmp_path):
     """Defaults with every destination redirected under tmp_path.
