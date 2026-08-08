@@ -303,3 +303,43 @@ def test_an_unclaimed_url_is_single(extractors):
 def test_is_collection_still_answers_for_youtube(extractors):
     assert playlist.is_collection("https://www.youtube.com/playlist?list=PL") is True
     assert playlist.is_collection("https://www.youtube.com/watch?v=abc123") is False
+
+
+REEL = "https://www.instagram.com/reel/DakwbFxtxk4/"
+
+
+def test_a_single_item_with_no_address_of_its_own_is_the_url_asked_about():
+    """A flat listing of one Instagram reel fills %(url)s with NA: there is no
+    playlist to enumerate, so the entry has no address apart from the one that
+    was pasted. Dropping it left "nothing in it" for a reel that downloads."""
+    out = "NA\tVideo by tinkertwist\ttinkertwist\n"
+    listing = playlist.parse_entries(out, REEL)
+    assert [e.url for e in listing.entries] == [REEL]
+    assert listing.entries[0].title == "Video by tinkertwist"
+    assert listing.unavailable == 0
+
+
+def test_an_addressless_entry_without_a_title_is_still_unavailable():
+    """NA in the title is a private video; NA in the url is a single item.
+    Both NA means there is nothing there."""
+    listing = playlist.parse_entries("NA\tNA\tsomeone\n", REEL)
+    assert listing.entries == []
+    assert listing.unavailable == 1
+
+
+def test_addressless_entries_collapse_to_the_one_url(monkeypatch):
+    """A carousel gives no per-item addresses either, and yt-dlp fetches the
+    whole post from the one URL rather than each piece separately."""
+    out = "NA\tFirst\tacct\nNA\tSecond\tacct\n"
+    listing = playlist.parse_entries(out, REEL)
+    assert [e.url for e in listing.entries] == [REEL]
+
+
+def test_real_addresses_are_preferred_over_the_source():
+    out = "https://youtu.be/a\tOne\tP\nNA\tTwo\tP\n"
+    listing = playlist.parse_entries(out, REEL)
+    assert [e.url for e in listing.entries] == ["https://youtu.be/a"]
+
+
+def test_without_a_source_an_addressless_entry_is_still_dropped():
+    assert playlist.parse_entries("not-a-url\tTitle\n").entries == []

@@ -119,7 +119,7 @@ def expand(url: str, proxy: str, cookies_from: str, limit: int = 0, timeout: flo
         raise ListingFailed(f"timed out after {int(timeout)}s") from None
     except OSError as exc:
         raise ListingFailed(str(exc)) from None
-    listing = parse_entries(done.stdout)
+    listing = parse_entries(done.stdout, url)
     if not listing.entries:
         detail = (done.stderr or "").strip().splitlines()
         if listing.unavailable:
@@ -130,21 +130,23 @@ def expand(url: str, proxy: str, cookies_from: str, limit: int = 0, timeout: flo
     return listing
 
 
-def parse_entries(output: str) -> Listing:
+def parse_entries(output: str, source: str = "") -> Listing:
     """The usable videos, and how many were not.
 
-    An entry with no title is a video nobody can fetch — private, or deleted.
-    Offering it means queueing a download whose only outcome is a failed row.
+    NA means two different things here. In the title it is a video nobody can
+    fetch — private, or deleted — and queueing it only ever produces a failed
+    row. In the url it is an item with no address of its own: a single reel or
+    a carousel has no playlist to enumerate, so the address to fetch is the one
+    that was pasted.
     """
     entries: list[Entry] = []
+    addressless: list[Entry] = []
     unavailable = 0
     for line in output.splitlines():
         if SEPARATOR not in line:
             continue
         parts = line.split(SEPARATOR)
         url = parts[0].strip()
-        if not url.startswith(("http://", "https://")):
-            continue
         if len(parts) >= 3:
             # A title may hold a tab of its own; the collection is the last field.
             title, collection = SEPARATOR.join(parts[1:-1]), parts[-1]
@@ -154,7 +156,15 @@ def parse_entries(output: str) -> Listing:
         if not name or name == NA:
             unavailable += 1
             continue
+        if not url.startswith(("http://", "https://")):
+            if source:
+                addressless.append(Entry(source, name, collection.strip()))
+            continue
         entries.append(Entry(url, name, collection.strip()))
+    if not entries and addressless:
+        # None of them can be fetched separately, so the post is one download
+        # and yt-dlp takes whatever it holds.
+        return Listing(addressless[:1], unavailable)
     return Listing(entries, unavailable)
 
 
