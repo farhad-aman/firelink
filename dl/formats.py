@@ -1,4 +1,8 @@
+import json
+import subprocess
 from dataclasses import dataclass
+
+from . import ytdlp
 
 MHTML = "mhtml"
 
@@ -41,3 +45,39 @@ def parse(info: dict) -> Offer:
     containers = sorted({f["ext"] for f in offered if f.get("ext")})
     subtitles = sorted(info.get("subtitles") or {})
     return Offer(tuple(heights), tuple(bitrates), tuple(containers), tuple(subtitles))
+
+
+def probe_command(url: str, proxy: str, cookies_from: str) -> list[str]:
+    argv = [ytdlp.binary(), "-J", "--no-warnings", "--no-playlist"]
+    if proxy:
+        argv += ["--proxy", proxy]
+    if cookies_from:
+        argv += ["--cookies-from-browser", cookies_from]
+    argv.append(url)
+    return argv
+
+
+def probe(
+    url: str, proxy: str = "", cookies_from: str = "", timeout: float = 120
+) -> Offer | None:
+    """What this URL offers, or None if asking did not work.
+
+    None rather than an empty Offer: the caller shows nothing either way, but
+    the two mean different things and only one of them is worth logging.
+    """
+    try:
+        done = subprocess.run(
+            probe_command(url, proxy, cookies_from),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    if done.returncode != 0:
+        return None
+    try:
+        return parse(json.loads(done.stdout))
+    except (json.JSONDecodeError, TypeError):
+        return None
