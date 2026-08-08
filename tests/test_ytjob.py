@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -57,7 +58,7 @@ def test_listing_skips_a_corrupt_job_file(tmp_path):
 
 def test_command_runs_yt_dlp_through_aria2c(job, tmp_path):
     argv = ytjob.command(job, tmp_path)
-    assert argv[0] == "yt-dlp"
+    assert Path(argv[0]).name == "yt-dlp"
     assert argv[argv.index("--downloader") + 1] == "aria2c"
     assert job["url"] == argv[-1]
 
@@ -147,7 +148,7 @@ def test_progress_of_a_missing_directory_is_zero(tmp_path):
 def test_probe_only_simulates(job):
     argv = ytjob.probe_command(job)
     assert "--simulate" in argv
-    assert argv[0] == "yt-dlp"
+    assert Path(argv[0]).name == "yt-dlp"
     assert argv[-1] == job["url"]
 
 

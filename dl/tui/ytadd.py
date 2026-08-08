@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from .. import duplicates, history, playlist, routing, ytjob, ytrun
+from .. import duplicates, history, playlist, routing, ytdlp, ytjob, ytrun
 from ..config import STATE_DIR, Config
 from ..format import human_bytes
 from .modals import ConfirmModal, DuplicateModal
@@ -64,7 +64,18 @@ class YouTubeAdder:
             self.failed = ytjob.FFMPEG_ADVICE
             self._done()
             return
-        collections = [url for url in self.urls if playlist.is_collection(url)]
+        broken = [url for url in self.urls if not ytdlp.working(url)]
+        if broken:
+            # yt-dlp ships 137 extractors it marks broken. Saying so now beats
+            # a minute of downloading nothing.
+            self.failed = f"yt-dlp marks this site's extractor broken: {broken[0]}"
+            self._done()
+            return
+        collections = [
+            url
+            for url in self.urls
+            if playlist.classify(url) in (playlist.COLLECTION, playlist.UNKNOWN)
+        ]
         if collections and not self.shared:
             self.urls = [url for url in self.urls if url not in collections]
             self.host.run_worker(self._open_collection(collections[0]), exclusive=False)
@@ -76,6 +87,9 @@ class YouTubeAdder:
 
         Listing is flat — one request for the whole thing rather than one per
         video — so this is a moment even for a long channel.
+
+        Also where an address yt-dlp would not classify gets settled: a post
+        that turns out to hold one item was never a collection.
         """
         try:
             listing = await asyncio.to_thread(
@@ -93,13 +107,18 @@ class YouTubeAdder:
             self._done()
             return
         entries = listing.entries
+        if len(entries) == 1:
+            self.urls = [entries[0].url]
+            self.titles = {entries[0].url: entries[0].title}
+            self._ask_options(0)
+            return
 
-        def decided(count: int | None) -> None:
-            if not count:
+        def decided(chosen: list[int] | None) -> None:
+            if not chosen:
                 self.cancelled = True
                 self._done()
                 return
-            taken = entries[:count]
+            taken = [entries[index] for index in chosen]
             self.urls = [entry.url for entry in taken]
             self.titles = {entry.url: entry.title for entry in taken}
             self.shared = True
@@ -108,7 +127,7 @@ class YouTubeAdder:
         self.host.push_screen(
             PlaylistScreen(
                 self.collection_title(url, entries),
-                len(entries),
+                entries,
                 self.cfg.newest,
                 listing.unavailable,
             ),

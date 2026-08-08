@@ -6,6 +6,7 @@ from dl import playlist
 from dl.tui import app as app_module
 from dl.tui import ytadd
 from dl.tui.app import DlApp
+from dl.tui.playlistscreen import PlaylistScreen
 from tests.test_app import FakeClient
 
 PLAYLIST = "https://www.youtube.com/playlist?list=PLxyz"
@@ -79,7 +80,7 @@ async def test_accepting_asks_quality_once_then_spawns_one_job_per_video(
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
-        await pilot.click("#all")
+        await pilot.click("#selected")
         await pilot.pause()
         assert type(app.screen).__name__ == "YouTubeOptionsScreen"
         await pilot.press("enter")
@@ -103,7 +104,7 @@ async def test_every_job_carries_its_title_from_the_listing(cfg, listing, spawne
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
-        await pilot.click("#all")
+        await pilot.click("#selected")
         await pilot.pause()
         await pilot.press("enter")
         await pilot.pause()
@@ -120,7 +121,7 @@ async def test_every_job_shares_the_one_destination_and_quality(cfg, listing, sp
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
-        await pilot.click("#all")
+        await pilot.click("#selected")
         await pilot.pause()
         await pilot.press("enter")
         await pilot.pause()
@@ -288,7 +289,15 @@ async def test_expanding_waits_as_long_as_a_probe_would(cfg, monkeypatch, spawne
 
     def record(url, proxy, cookies, limit=0, timeout=None):
         seen["timeout"] = timeout
-        return playlist.Listing([playlist.Entry("https://youtu.be/v1", "One")], 0)
+        # Two, because one entry means it was never a collection and the
+        # screen this test waits on would rightly be skipped.
+        return playlist.Listing(
+            [
+                playlist.Entry("https://youtu.be/v1", "One"),
+                playlist.Entry("https://youtu.be/v2", "Two"),
+            ],
+            0,
+        )
 
     monkeypatch.setattr(ytadd.playlist, "expand", record)
     app = DlApp(config_module.replace(cfg, probe_timeout=600), FakeClient())
@@ -296,3 +305,133 @@ async def test_expanding_waits_as_long_as_a_probe_would(cfg, monkeypatch, spawne
         await pilot.pause()
         await open_playlist(app, pilot)
     assert seen["timeout"] == 600
+
+
+AMBIGUOUS = "https://either.test/p/abc"
+
+
+class EitherWay:
+    """Stands in for Instagram and Reddit: yt-dlp will not say in advance
+    whether one of these addresses holds one item or twenty."""
+
+    IE_NAME = "either"
+    _RETURN_TYPE = "any"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://either.test/")
+
+
+@pytest.fixture
+def ambiguous_site(monkeypatch):
+    from dl import ytdlp
+
+    monkeypatch.setattr(ytdlp, "_classes", None)
+    monkeypatch.setattr(ytdlp, "_load", lambda: [EitherWay])
+    yield
+    ytdlp._classes = None
+
+
+async def settle(pilot, times=30):
+    for _ in range(times):
+        await pilot.pause()
+
+
+async def test_an_ambiguous_url_holding_one_item_skips_the_collection_screen(
+    cfg, spawned, ambiguous_site, monkeypatch
+):
+    """An Instagram post is 'any' until listed. One entry means it was never
+    a collection, and a "download all 1?" screen would be noise."""
+    one = [playlist.Entry(AMBIGUOUS, "Just One")]
+    monkeypatch.setattr(ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(one, 0))
+
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept([AMBIGUOUS])
+        await settle(pilot)
+        assert not any(
+            type(s).__name__ == "PlaylistScreen" for s in app.screen_stack
+        )
+        assert type(app.screen).__name__ == "YouTubeOptionsScreen"
+
+
+async def test_an_ambiguous_url_holding_many_shows_the_collection_screen(
+    cfg, spawned, ambiguous_site, monkeypatch
+):
+    many = [
+        playlist.Entry("https://either.test/p/a", "One"),
+        playlist.Entry("https://either.test/p/b", "Two"),
+    ]
+    monkeypatch.setattr(ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(many, 0))
+
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept([AMBIGUOUS])
+        await settle(pilot)
+        assert any(type(s).__name__ == "PlaylistScreen" for s in app.screen_stack)
+
+
+def make_entries(n):
+    return [playlist.Entry(f"https://e.test/{i}", f"Item {i}") for i in range(n)]
+
+
+def test_a_small_collection_offers_a_checkbox_list():
+    screen = PlaylistScreen("Set", make_entries(14), newest=100)
+    assert screen.picks_individually is True
+
+
+def test_a_large_collection_keeps_the_count_chooser():
+    """A channel of thousands is not a list anyone scrolls."""
+    screen = PlaylistScreen("Channel", make_entries(4812), newest=100)
+    assert screen.picks_individually is False
+
+
+def test_the_threshold_is_the_newest_setting():
+    """Exactly at the limit is still small enough to list."""
+    assert PlaylistScreen("x", make_entries(100), newest=100).picks_individually is True
+    assert PlaylistScreen("x", make_entries(101), newest=100).picks_individually is False
+
+
+def test_the_count_chooser_returns_every_index():
+    screen = PlaylistScreen("Channel", make_entries(300), newest=100)
+    assert screen.all_indices() == list(range(300))
+
+
+def test_the_newest_button_returns_the_first_n_indices():
+    screen = PlaylistScreen("Channel", make_entries(300), newest=100)
+    assert screen.newest_indices() == list(range(100))
+
+
+class BrokenSite:
+    """yt-dlp marks 137 of its extractors broken, instagram:user among them."""
+
+    IE_NAME = "broken"
+    _RETURN_TYPE = "video"
+    _WORKING = False
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://broken.test/")
+
+
+async def test_a_broken_extractor_is_refused_before_anything_is_fetched(
+    cfg, spawned, monkeypatch
+):
+    from dl import ytdlp
+
+    monkeypatch.setattr(ytdlp, "_classes", None)
+    monkeypatch.setattr(ytdlp, "_load", lambda: [BrokenSite])
+    notes = []
+
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
+        app._accept(["https://broken.test/thing"])
+        await settle(pilot)
+        assert spawned == []
+        assert any("broken" in note for note in notes)
+    ytdlp._classes = None

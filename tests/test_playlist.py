@@ -227,3 +227,119 @@ def test_expand_reports_how_many_were_unavailable(monkeypatch):
     listing = playlist.expand("https://youtube.com/playlist?list=x", "", "")
     assert len(listing.entries) == 1
     assert listing.unavailable == 1
+
+
+from dl import ytdlp as ytdlp_module
+
+
+class OnePer:
+    IE_NAME = "one"
+    _RETURN_TYPE = "video"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://one.test/")
+
+
+class ManyPer:
+    IE_NAME = "many"
+    _RETURN_TYPE = "playlist"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://many.test/")
+
+
+class EitherPer:
+    IE_NAME = "either"
+    _RETURN_TYPE = "any"
+    _WORKING = True
+
+    @classmethod
+    def suitable(cls, url):
+        return url.startswith("https://either.test/")
+
+
+@pytest.fixture
+def extractors(monkeypatch):
+    monkeypatch.setattr(ytdlp_module, "_classes", None)
+    monkeypatch.setattr(ytdlp_module, "_load", lambda: [OnePer, ManyPer, EitherPer])
+    yield
+    ytdlp_module._classes = None
+
+
+def test_a_youtube_playlist_is_a_collection(extractors):
+    url = "https://www.youtube.com/playlist?list=PLxyz"
+    assert playlist.classify(url) == playlist.COLLECTION
+
+
+def test_a_video_copied_from_inside_a_playlist_stays_single(extractors):
+    """Regression: yt-dlp resolves this to youtube:tab with return type
+    'any', so deferring to it would queue the whole playlist behind one
+    video the user copied while watching it."""
+    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLxyz&index=4"
+    assert playlist.classify(url) == playlist.SINGLE
+
+
+def test_an_extractor_that_yields_many_is_a_collection(extractors):
+    assert playlist.classify("https://many.test/set") == playlist.COLLECTION
+
+
+def test_an_extractor_that_yields_one_is_single(extractors):
+    assert playlist.classify("https://one.test/track") == playlist.SINGLE
+
+
+def test_an_extractor_that_will_not_say_is_unknown(extractors):
+    """Instagram and Reddit sit here: a post may be one item or a carousel."""
+    assert playlist.classify("https://either.test/p/abc") == playlist.UNKNOWN
+
+
+def test_an_unclaimed_url_is_single(extractors):
+    assert playlist.classify("https://example.com/a.iso") == playlist.SINGLE
+
+
+def test_is_collection_still_answers_for_youtube(extractors):
+    assert playlist.is_collection("https://www.youtube.com/playlist?list=PL") is True
+    assert playlist.is_collection("https://www.youtube.com/watch?v=abc123") is False
+
+
+REEL = "https://www.instagram.com/reel/DakwbFxtxk4/"
+
+
+def test_a_single_item_with_no_address_of_its_own_is_the_url_asked_about():
+    """A flat listing of one Instagram reel fills %(url)s with NA: there is no
+    playlist to enumerate, so the entry has no address apart from the one that
+    was pasted. Dropping it left "nothing in it" for a reel that downloads."""
+    out = "NA\tVideo by tinkertwist\ttinkertwist\n"
+    listing = playlist.parse_entries(out, REEL)
+    assert [e.url for e in listing.entries] == [REEL]
+    assert listing.entries[0].title == "Video by tinkertwist"
+    assert listing.unavailable == 0
+
+
+def test_an_addressless_entry_without_a_title_is_still_unavailable():
+    """NA in the title is a private video; NA in the url is a single item.
+    Both NA means there is nothing there."""
+    listing = playlist.parse_entries("NA\tNA\tsomeone\n", REEL)
+    assert listing.entries == []
+    assert listing.unavailable == 1
+
+
+def test_addressless_entries_collapse_to_the_one_url(monkeypatch):
+    """A carousel gives no per-item addresses either, and yt-dlp fetches the
+    whole post from the one URL rather than each piece separately."""
+    out = "NA\tFirst\tacct\nNA\tSecond\tacct\n"
+    listing = playlist.parse_entries(out, REEL)
+    assert [e.url for e in listing.entries] == [REEL]
+
+
+def test_real_addresses_are_preferred_over_the_source():
+    out = "https://youtu.be/a\tOne\tP\nNA\tTwo\tP\n"
+    listing = playlist.parse_entries(out, REEL)
+    assert [e.url for e in listing.entries] == ["https://youtu.be/a"]
+
+
+def test_without_a_source_an_addressless_entry_is_still_dropped():
+    assert playlist.parse_entries("not-a-url\tTitle\n").entries == []

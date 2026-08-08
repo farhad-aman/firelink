@@ -120,7 +120,7 @@ def test_a_caught_youtube_link_honours_the_concurrency_cap(cfg, tmp_path, monkey
 
     monkeypatch.setattr(ytflow, "spawn", fake_spawn)
     monkeypatch.setattr(ytjob, "ffmpeg_available", lambda: True)
-    monkeypatch.setattr(watch.shutil, "which", lambda _name: "/usr/bin/yt-dlp")
+    monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
     monkeypatch.setattr(
         watch.ytrun if hasattr(watch, "ytrun") else __import__("dl.ytrun", fromlist=["x"]),
         "probe",
