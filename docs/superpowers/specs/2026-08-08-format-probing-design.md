@@ -65,19 +65,33 @@ class Offer:
     subtitles: tuple[str, ...]     # language codes actually available
 ```
 
-Derived from `yt-dlp -J`:
+A format is **usable** when it carries a truthy `height` or a truthy `abr`.
+Everything is derived from usable formats only:
 
-- `heights` — distinct truthy `height` across formats, descending
-- `bitrates` — distinct rounded `abr`, descending
-- `containers` — distinct `ext`, storyboards excluded
-- `subtitles` — keys of the `subtitles` object
+- `heights` — distinct truthy `height`, descending
+- `bitrates` — distinct rounded truthy `abr`, descending
+- `containers` — distinct `ext` of usable formats
+- `subtitles` — keys of the `subtitles` object, which may be absent entirely
 
-**Storyboard formats are discarded**: `ext == "mhtml"`, or an entry carrying
-neither a height nor an `abr`. This is not hypothetical tidying. A yt-dlp
-without `yt-dlp-ejs` returns *only* storyboards for YouTube — the regression
-fixed in `b156523` — and an `Offer` built from those would advertise a menu of
-nothing. Discarding them means such a result yields an empty `Offer`, which is
-treated as no information and leaves the screen static.
+Truthiness is doing real work in that rule, not tidiness. Measured against a
+live Instagram reel:
+
+```
+dash-…915a   m4a   h=None   abr=59.135   vcodec=none     <- the audio
+1 / 2 / 3    mp4   h=None   abr=None     vcodec=None     <- no metadata
+dash-…345v   mp4   h=1280   abr=0        vcodec=vp09…    <- video
+```
+
+Video formats report **`abr: 0`**, not `None`. Collecting bitrates without the
+truthiness check would offer "0 kbps" as a choice. And `1`, `2`, `3` are real
+Instagram formats stripped of metadata rather than storyboards — they describe
+nothing, so they shape nothing.
+
+The same rule subsumes storyboard filtering without naming it: YouTube's `sb0`
+–`sb3` are `mhtml` with no height and no `abr`, so they are not usable and
+contribute nothing. That matters because a yt-dlp missing `yt-dlp-ejs` returns
+*only* those for YouTube — the regression fixed in `b156523` — and the result
+is an empty `Offer`, treated as no information, leaving the screen static.
 
 ### How the screen narrows
 
