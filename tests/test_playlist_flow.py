@@ -435,3 +435,74 @@ async def test_a_broken_extractor_is_refused_before_anything_is_fetched(
         assert spawned == []
         assert any("broken" in note for note in notes)
     ytdlp._classes = None
+
+
+async def test_the_options_screen_opens_without_waiting_for_the_probe(
+    cfg, spawned, monkeypatch
+):
+    """Eight to twelve seconds is too long to hold the screen shut."""
+    from dl import formats
+
+    monkeypatch.setattr(formats, "probe", lambda *a, **k: None)
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept(["https://youtu.be/abc"])
+        await pilot.pause()
+        assert type(app.screen).__name__ == "YouTubeOptionsScreen"
+
+
+async def test_the_offer_reaches_the_open_screen(cfg, spawned, monkeypatch):
+    from dl import formats
+    from dl.formats import Offer
+
+    monkeypatch.setattr(
+        formats,
+        "probe",
+        lambda *a, **k: Offer(heights=(), bitrates=(128, 96), containers=("mp3",)),
+    )
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept(["https://youtu.be/abc"])
+        for _ in range(40):
+            await pilot.pause()
+            if getattr(app.screen, "offer", None):
+                break
+        assert app.screen.offer.audio_only is True
+        assert app.screen.options_for("audio") == ("best", "128", "96")
+
+
+async def test_a_failed_probe_leaves_the_screen_alone(cfg, spawned, monkeypatch):
+    from dl import formats
+
+    monkeypatch.setattr(formats, "probe", lambda *a, **k: None)
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept(["https://youtu.be/abc"])
+        for _ in range(20):
+            await pilot.pause()
+        assert app.screen.offer is None
+        assert app.screen.options_for("video") == (
+            "best", "2160", "1440", "1080", "720", "480", "360", "none",
+        )
+
+
+async def test_closing_before_the_probe_lands_does_not_crash(cfg, spawned, monkeypatch):
+    """The worker returns to a screen that is gone."""
+    from dl import formats
+    from dl.formats import Offer
+
+    monkeypatch.setattr(
+        formats, "probe", lambda *a, **k: Offer(heights=(720,), bitrates=(128,))
+    )
+    app = DlApp(cfg, FakeClient())
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app._accept(["https://youtu.be/abc"])
+        await pilot.pause()
+        await pilot.press("escape")
+        for _ in range(30):
+            await pilot.pause()
+        assert spawned == []

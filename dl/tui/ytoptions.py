@@ -4,6 +4,7 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
+from ..formats import Offer
 from ..youtube import (
     AUDIO_CHOICES,
     AUDIO_CONTAINERS,
@@ -51,10 +52,17 @@ class YouTubeOptionsScreen(ModalScreen[Choices | None]):
 
     FIELDS = ("video", "audio", "subs", "sub_lang", "container")
 
-    def __init__(self, title: str, choices: Choices = DEFAULTS, can_burn: bool = True):
+    def __init__(
+        self,
+        title: str,
+        choices: Choices = DEFAULTS,
+        can_burn: bool = True,
+        offer: Offer | None = None,
+    ):
         super().__init__()
         self.video_title = title
         self.can_burn = can_burn
+        self.offer = offer
         self.values = dict(
             video=choices.video,
             audio=choices.audio,
@@ -70,25 +78,76 @@ class YouTubeOptionsScreen(ModalScreen[Choices | None]):
     def audio_only(self) -> bool:
         return self.values["video"] == "none"
 
+    @property
+    def known(self) -> Offer | None:
+        """What the probe found, once it has found anything worth using."""
+        if self.offer is None or self.offer.empty:
+            return None
+        return self.offer
+
     def options_for(self, field: str) -> tuple[str, ...]:
+        known = self.known
         if field == "video":
+            if known and known.heights:
+                return ("best", *(str(h) for h in known.heights), "none")
             return VIDEO_CHOICES
         if field == "audio":
+            if known and known.bitrates:
+                return ("best", *(str(b) for b in known.bitrates))
             return AUDIO_CHOICES
         if field == "subs":
             return SUB_CHOICES
         if field == "sub_lang":
-            return LANGS
+            return known.subtitles if known and known.subtitles else LANGS
         return AUDIO_CONTAINERS if self.audio_only else VIDEO_CONTAINERS
 
     def visible_fields(self) -> tuple[str, ...]:
         """Subtitles are meaningless without a picture, and the language only
-        matters once subtitles are on."""
-        if self.audio_only:
-            return ("video", "audio", "container")
-        if self.values["subs"] == "off":
-            return ("video", "audio", "subs", "container")
-        return self.FIELDS
+        matters once subtitles are on.
+
+        Choosing audio-only keeps the video row, so the choice can be undone.
+        A site with no video at all loses the row: there is nothing to go
+        back to.
+        """
+        known = self.known
+        no_video = known is not None and known.audio_only
+        fields = [] if no_video else ["video"]
+        fields.append("audio")
+        silent = known is not None and not known.subtitles
+        if not no_video and not self.audio_only and not silent:
+            fields.append("subs")
+            if self.values["subs"] != "off":
+                fields.append("sub_lang")
+        fields.append("container")
+        return tuple(fields)
+
+    def apply_offer(self, offer: Offer) -> None:
+        """Take up what the probe found, without overruling a choice made
+        while it was still running.
+
+        Only the repaint is guarded by being mounted: the probe can land after
+        the screen was dismissed, and drawing into a widget that is gone
+        raises, while settling values on one nobody will see does not.
+        """
+        if offer.empty:
+            return
+        self.offer = offer
+        if offer.audio_only:
+            self.values["video"] = "none"
+        for field in self.FIELDS:
+            self.values[field] = self._nearest(field, self.values[field])
+        self.field = min(self.field, len(self.visible_fields()) - 1)
+        if self.is_mounted:
+            self._repaint()
+
+    def _nearest(self, field: str, current: str) -> str:
+        options = self.options_for(field)
+        if current in options:
+            return current
+        numeric = [o for o in options if o.isdigit()]
+        if current.isdigit() and numeric:
+            return min(numeric, key=lambda o: abs(int(o) - int(current)))
+        return options[0]
 
     def compose(self) -> ComposeResult:
         with Vertical(id="yt-box"):

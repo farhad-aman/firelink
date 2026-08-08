@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from .. import duplicates, history, playlist, routing, ytdlp, ytjob, ytrun
+from .. import duplicates, formats, history, playlist, routing, ytdlp, ytjob, ytrun
 from ..config import STATE_DIR, Config
 from ..format import human_bytes
 from .modals import ConfirmModal, DuplicateModal
@@ -160,9 +160,25 @@ class YouTubeAdder:
             self._choices = choices
             self._ask_where(index, choices)
 
-        self.host.push_screen(
-            YouTubeOptionsScreen(self._label(url), can_burn=self.can_burn), chosen
+        screen = YouTubeOptionsScreen(self._label(url), can_burn=self.can_burn)
+        self.host.push_screen(screen, chosen)
+        self.host.run_worker(self._probe_into(screen, url), exclusive=False)
+
+    async def _probe_into(self, screen, url: str) -> None:
+        """Refine the open screen once the site says what it has.
+
+        Runs beside the screen rather than before it: asking takes eight to
+        twelve seconds, which is too long to hold it shut.
+        """
+        offer = await asyncio.to_thread(
+            formats.probe,
+            url,
+            self._proxy_for(url),
+            self.cfg.cookies_from,
+            self.cfg.probe_timeout,
         )
+        if offer is not None:
+            screen.apply_offer(offer)
 
     def _label(self, url: str) -> str:
         return self.titles.get(url) or label_for(url)
