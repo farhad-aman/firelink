@@ -240,3 +240,19 @@ def test_a_nonsense_version_has_no_age(monkeypatch):
 def test_the_day_before_the_limit_is_still_quiet(monkeypatch):
     monkeypatch.setattr(ytdlp, "age_days", lambda: ytdlp.STALE_DAYS - 1)
     assert ytdlp.staleness_advice() == ""
+
+
+def test_yt_dlp_is_declared_with_its_default_extras():
+    """Bare `pip install yt-dlp` omits yt-dlp-ejs, which solves YouTube's
+    player challenge. Without it YouTube returns storyboard images and
+    nothing else, and every download fails with "Requested format is not
+    available" — while a Homebrew yt-dlp of the identical version works,
+    because that formula bundles the extras."""
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    declared = tomllib.loads((root / "pyproject.toml").read_text())
+    deps = declared["project"]["dependencies"]
+    ytdlp_dep = next(d for d in deps if d.startswith("yt-dlp"))
+    assert "[default]" in ytdlp_dep, ytdlp_dep
