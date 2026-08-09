@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  tap:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse a tag that disagrees with pyproject
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          declared=$(python3 -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$tag" != "$declared" ]; then
+            echo "tag $tag does not match pyproject version $declared" >&2
+            exit 1
+          fi
+
+      - name: Checksum the release tarball
+        id: tarball
+        run: |
+          url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          curl -fsSL "$url" -o source.tar.gz
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(shasum -a 256 source.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: farhad-aman/homebrew-tap
+          token: ${{ secrets.TAP_TOKEN }}
+          path: tap
+
+      - name: Point the formula at the new tag
+        run: |
+          formula=tap/Formula/firelink.rb
+          sed -i '' -E "s|^  url \".*\"|  url \"${{ steps.tarball.outputs.url }}\"|" "$formula"
+          sed -i '' -E "s|^  sha256 \".*\"|  sha256 \"${{ steps.tarball.outputs.sha256 }}\"|" "$formula"
+
+      - name: Regenerate the Python resources
+        run: |
+          brew tap farhad-aman/tap
+          repository=$(brew --repository farhad-aman/tap)
+          cp tap/Formula/firelink.rb "$repository/Formula/firelink.rb"
+          brew trust farhad-aman/tap
+          brew update-python-resources firelink
+          cp "$repository/Formula/firelink.rb" tap/Formula/firelink.rb
+
+      - name: Push the formula
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/firelink.rb
+          git commit -m "firelink ${GITHUB_REF_NAME#v}"
+          git push
