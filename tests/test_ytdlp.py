@@ -214,12 +214,23 @@ def test_a_fresh_yt_dlp_needs_no_advice(monkeypatch):
 
 
 def test_a_stale_yt_dlp_says_how_to_update(monkeypatch):
-    """firelink owns yt-dlp now, so brew upgrade no longer touches it. A
-    silent stale copy shows up as sites mysteriously breaking."""
+    """A silent stale copy shows up as sites mysteriously breaking, so the
+    advice has to name the command that actually works for this install."""
+    from dl import install
+
     monkeypatch.setattr(ytdlp, "age_days", lambda: 200)
+    monkeypatch.setattr(install, "update_command", lambda: "brew upgrade firelink")
     advice = ytdlp.staleness_advice()
-    assert "make install" in advice
+    assert "brew upgrade firelink" in advice
     assert "200" in advice
+
+
+def test_a_stale_yt_dlp_in_a_clone_says_make(monkeypatch):
+    from dl import install
+
+    monkeypatch.setattr(ytdlp, "age_days", lambda: 200)
+    monkeypatch.setattr(install, "update_command", lambda: "make install")
+    assert "make install" in ytdlp.staleness_advice()
 
 
 def test_an_unreadable_version_gives_no_advice(monkeypatch):

@@ -216,8 +216,7 @@ def test_missing_yt_dlp_is_reported_plainly(monkeypatch, tmp_path, capsys):
     assert entry.main(["https://youtu.be/abc123"]) == 1
     err = capsys.readouterr().err
     assert "yt-dlp not found" in err
-    # firelink installs its own now, so brew is no longer where it comes from.
-    assert "make install" in err
+    assert entry.install.update_command() in err
 
 
 def test_youtube_without_a_terminal_explains_itself(monkeypatch, tmp_path, capsys):
@@ -347,3 +346,20 @@ def test_dash_h_without_a_value_is_an_error(capsys):
 
 def test_usage_mentions_the_header_flag():
     assert "-H" in entry.USAGE
+
+
+def test_the_version_flag_prints_the_version(monkeypatch, capsys):
+    monkeypatch.setattr(entry.install, "version", lambda: "0.2.0")
+    assert entry.main(["--version"]) == 0
+    assert capsys.readouterr().out.strip() == "dl 0.2.0"
+
+
+def test_the_version_flag_beats_a_url(monkeypatch, capsys):
+    """--version is asked in isolation; nothing should queue behind it."""
+    monkeypatch.setattr(entry.install, "version", lambda: "0.2.0")
+    assert entry.main(["--version", "https://e.com/a.iso"]) == 0
+    assert "0.2.0" in capsys.readouterr().out
+
+
+def test_the_version_flag_is_documented():
+    assert "--version" in entry.USAGE

@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import checksum, cli, config, daemon, routing, ytdlp
+from . import checksum, cli, config, daemon, install, routing, ytdlp
 from .config import CONFIG_FILE
 from .rpc import Aria2Error, Aria2Unreachable
 from .tui.preview import Request, run_preview
@@ -20,6 +20,7 @@ dl — download manager
   dl file.torrent          torrent file, local or over http
   --no-preview             queue and exit without attaching the live preview
   dl                       open the TUI
+  dl --version             print the installed version
 
   dl ls [name]             list downloads, optionally matching a name (--json)
   dl history [n] [name]    list finished downloads (--failed, --json)
@@ -93,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
 def _run_youtube(cfg, urls: list[str], proxy: bool, interactive: bool) -> int:
     """YouTube needs yt-dlp: aria2 cannot resolve a watch page into streams."""
     if not ytdlp.available():
-        print("dl: yt-dlp not found — run `make install`", file=sys.stderr)
+        print(f"dl: yt-dlp not found — run `{install.update_command()}`", file=sys.stderr)
         return 1
     if not interactive:
         print("dl: YouTube downloads need a terminal to choose quality", file=sys.stderr)
@@ -110,6 +111,10 @@ def _run_youtube(cfg, urls: list[str], proxy: bool, interactive: bool) -> int:
 def _run(args: list[str]) -> int:
     if args and args[0] in ("-h", "--help", "help"):
         print(USAGE)
+        return 0
+
+    if args and args[0] == "--version":
+        print(f"dl {install.version()}")
         return 0
 
     command = args[0] if args and args[0] in SUBCOMMANDS else None
