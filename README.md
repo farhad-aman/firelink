@@ -11,7 +11,23 @@ presentation. Nothing runs when you are not downloading.
 ## Install
 
 ```bash
-brew install aria2
+brew install farhad-aman/tap/firelink
+```
+
+That brings `aria2` and `ffmpeg` with it. The command is `dl`.
+
+```bash
+brew upgrade firelink    # or just `brew upgrade` — it rides along
+brew uninstall firelink
+```
+
+### From source
+
+For working on firelink itself. The install is editable, so edits take effect
+without reinstalling.
+
+```bash
+brew install aria2 ffmpeg
 git clone https://github.com/farhad-aman/firelink.git
 cd firelink && make install
 ```
@@ -23,6 +39,10 @@ it, and writes a `dl` shim to `~/.local/bin/dl`. System Python is untouched.
 make test        # run the suite
 make uninstall   # remove venv and shim
 ```
+
+Do not keep both installs. Homebrew's `bin` usually precedes `~/.local/bin` on
+PATH, so a tapped copy silently shadows the shim and edits appear to do
+nothing. `dl --version` and `which dl` say which one is answering.
 
 ## Usage
 
@@ -523,3 +543,30 @@ The suite covers behaviour; these are the things only an eye can check.
 - [ ] macOS notification appears on completion
 - [ ] Ctrl-C in the TUI leaves downloads running (`dl ls` confirms)
 - [ ] All four themes look correct
+
+## Releasing
+
+A tag is the whole release. Pushing one runs `.github/workflows/release.yml`,
+which rewrites the tap's formula and pushes it, so no formula field is ever
+edited by hand.
+
+```bash
+# bump version in pyproject.toml, commit
+git tag v0.3.0 && git push --tags
+gh run watch
+```
+
+The workflow refuses a tag that disagrees with `pyproject.toml`, so
+`dl --version` can never lie about which release a copy is.
+
+If the Action is broken, the same six steps by hand:
+
+1. Compute `shasum -a 256` of the tag's source tarball from GitHub.
+2. Set `url` and `sha256` in `Formula/firelink.rb` in the tap.
+3. `brew tap farhad-aman/tap && brew trust farhad-aman/tap`
+4. `brew update-python-resources firelink` — regenerates every `resource`.
+5. Copy the formula back out of `$(brew --repository farhad-aman/tap)`.
+6. Commit and push the tap.
+
+Step 4 is what keeps yt-dlp current. A release is the only thing that refreshes
+it, and a stale yt-dlp shows up as sites breaking for no visible reason.
