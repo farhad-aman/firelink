@@ -216,8 +216,7 @@ def test_missing_yt_dlp_is_reported_plainly(monkeypatch, tmp_path, capsys):
     assert entry.main(["https://youtu.be/abc123"]) == 1
     err = capsys.readouterr().err
     assert "yt-dlp not found" in err
-    # firelink installs its own now, so brew is no longer where it comes from.
-    assert "make install" in err
+    assert entry.install.update_command() in err
 
 
 def test_youtube_without_a_terminal_explains_itself(monkeypatch, tmp_path, capsys):

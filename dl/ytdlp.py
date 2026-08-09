@@ -3,7 +3,7 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
-from . import routing, torrent
+from . import install, routing, torrent
 from .youtube import is_youtube
 
 BINARY = "yt-dlp"
@@ -106,13 +106,13 @@ def age_days() -> int | None:
 def staleness_advice() -> str:
     """Said only when it is old enough to be the reason a site broke.
 
-    firelink installs its own yt-dlp, so `brew upgrade` no longer reaches it
-    and a copy left behind fails as sites changing rather than as a version.
+    firelink installs its own yt-dlp, so the copy on PATH is not the one that
+    matters and the remedy depends on how firelink itself arrived.
     """
     days = age_days()
     if days is None or days < STALE_DAYS:
         return ""
-    return f"yt-dlp is {days} days old — sites break silently; run `make install`"
+    return f"yt-dlp is {days} days old — sites break silently; run `{install.update_command()}`"
 
 
 def looks_like_file(url: str) -> bool:
