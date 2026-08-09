@@ -20,6 +20,7 @@ dl — download manager
   dl file.torrent          torrent file, local or over http
   --no-preview             queue and exit without attaching the live preview
   dl                       open the TUI
+  dl --version             print the installed version
 
   dl ls [name]             list downloads, optionally matching a name (--json)
   dl history [n] [name]    list finished downloads (--failed, --json)
@@ -110,6 +111,10 @@ def _run_youtube(cfg, urls: list[str], proxy: bool, interactive: bool) -> int:
 def _run(args: list[str]) -> int:
     if args and args[0] in ("-h", "--help", "help"):
         print(USAGE)
+        return 0
+
+    if args and args[0] == "--version":
+        print(f"dl {install.version()}")
         return 0
 
     command = args[0] if args and args[0] in SUBCOMMANDS else None

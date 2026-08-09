@@ -346,3 +346,20 @@ def test_dash_h_without_a_value_is_an_error(capsys):
 
 def test_usage_mentions_the_header_flag():
     assert "-H" in entry.USAGE
+
+
+def test_the_version_flag_prints_the_version(monkeypatch, capsys):
+    monkeypatch.setattr(entry.install, "version", lambda: "0.2.0")
+    assert entry.main(["--version"]) == 0
+    assert capsys.readouterr().out.strip() == "dl 0.2.0"
+
+
+def test_the_version_flag_beats_a_url(monkeypatch, capsys):
+    """--version is asked in isolation; nothing should queue behind it."""
+    monkeypatch.setattr(entry.install, "version", lambda: "0.2.0")
+    assert entry.main(["--version", "https://e.com/a.iso"]) == 0
+    assert "0.2.0" in capsys.readouterr().out
+
+
+def test_the_version_flag_is_documented():
+    assert "--version" in entry.USAGE
