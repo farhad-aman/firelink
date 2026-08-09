@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "firelink"
-version = "0.1.0"
+version = "0.2.0"
 description = "Terminal download manager over aria2c"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -13,6 +13,9 @@ dependencies = ["textual>=0.80", "tomlkit>=0.13", "yt-dlp[default]>=2025.1.1"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+
+[project.scripts]
+dl = "dl.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["dl*"]
