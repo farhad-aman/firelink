@@ -11,10 +11,14 @@ presentation. Nothing runs when you are not downloading.
 ## Install
 
 ```bash
-brew install farhad-aman/tap/firelink
+brew tap farhad-aman/tap
+brew trust farhad-aman/tap
+brew install firelink
 ```
 
-That brings `aria2` and `ffmpeg` with it. The command is `dl`.
+Homebrew refuses to load formulae from a tap it has not been told to trust, so
+the middle line is needed once per machine. The install brings `aria2`,
+`ffmpeg` and `deno` with it. The command is `dl`.
 
 ```bash
 brew upgrade firelink    # or just `brew upgrade` — it rides along

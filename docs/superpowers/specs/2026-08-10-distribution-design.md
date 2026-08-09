@@ -58,11 +58,28 @@ lets it be referred to as `farhad-aman/tap`.
 ### What a friend types
 
 ```bash
-brew install farhad-aman/tap/firelink
+brew tap farhad-aman/tap
+brew trust farhad-aman/tap
+brew install firelink
 ```
 
-That pulls `aria2`, `ffmpeg` and `python@3.13` as dependencies, builds a sealed
-virtualenv, and puts `dl` on their PATH.
+That pulls `aria2`, `deno`, `ffmpeg` and `python@3.13` as dependencies, builds a
+sealed virtualenv, and puts `dl` on their PATH.
+
+**Corrected 2026-08-10 during implementation, twice.** The design said one
+command and three dependencies; both were wrong.
+
+Homebrew refuses to load a formula from an untrusted third-party tap and
+directs the user to `brew trust`, so trusting is a required step rather than an
+optional hardening one. It is once per machine.
+
+And `yt-dlp-ejs` — the package whose absence broke every YouTube download on
+2026-08-08 — ships a JavaScript component. Homebrew builds every resource from
+source (`--no-binary=:all:`), and that build aborts with *"One of 'pnpm',
+'deno', 'bun', or 'npm' could not be found"*. Homebrew's own `yt-dlp` formula
+carries `depends_on "deno"` beside a byte-identical `yt-dlp-ejs` resource, as a
+runtime dependency rather than build-only, because the JS engine is also what
+solves YouTube's player challenge at run time. firelink needs the same.
 
 ```bash
 brew upgrade            # firelink rides along with everything else
@@ -89,6 +106,7 @@ class Firelink < Formula
   license "MIT"
 
   depends_on "aria2"
+  depends_on "deno"
   depends_on "ffmpeg"
   depends_on "python@3.13"
 
