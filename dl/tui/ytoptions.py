@@ -125,9 +125,8 @@ class YouTubeOptionsScreen(ModalScreen[Choices | None]):
         """Take up what the probe found, without overruling a choice made
         while it was still running.
 
-        Only the repaint is guarded by being mounted: the probe can land after
-        the screen was dismissed, and drawing into a widget that is gone
-        raises, while settling values on one nobody will see does not.
+        Settling values on a screen nobody will see is harmless; drawing on
+        one is not, which _repaint handles for itself.
         """
         if offer.empty:
             return
@@ -137,8 +136,7 @@ class YouTubeOptionsScreen(ModalScreen[Choices | None]):
         for field in self.FIELDS:
             self.values[field] = self._nearest(field, self.values[field])
         self.field = min(self.field, len(self.visible_fields()) - 1)
-        if self.is_mounted:
-            self._repaint()
+        self._repaint()
 
     def _nearest(self, field: str, current: str) -> str:
         options = self.options_for(field)
@@ -177,7 +175,12 @@ class YouTubeOptionsScreen(ModalScreen[Choices | None]):
             rows.append("     libass) — soft subtitles will still work")
             rows.append("     for hard subs: brew install homebrew-ffmpeg/ffmpeg/ffmpeg")
         self.body = "\n".join(rows)
-        self.query_one("#yt-list", Static).update(self.body)
+        # The probe can land after the screen was dismissed. Textual removes
+        # the composed children then but leaves is_mounted true, so the only
+        # reliable question is whether the target is still there.
+        listing = self.query("#yt-list")
+        if listing:
+            listing.first(Static).update(self.body)
 
     def _current_field(self) -> str:
         fields = self.visible_fields()

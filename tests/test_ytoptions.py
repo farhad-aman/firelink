@@ -280,3 +280,16 @@ def test_an_empty_offer_is_not_applied():
     screen.apply_offer(Offer())
     assert screen.values["video"] == "1080"
     assert screen.offer is None
+
+
+async def test_a_probe_landing_after_dismissal_does_not_crash():
+    """The probe runs beside the screen and can outlive it: accept the
+    defaults quickly and the answer arrives with nothing left to draw on.
+    is_mounted still reports True there, so it is the wrong thing to ask."""
+    screen = make()
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+        screen.apply_offer(VIDEO_OFFER)
