@@ -4,7 +4,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, TextArea
+from textual.widgets import Button, Input, Label, Static, TextArea
 
 from .. import duplicates
 
@@ -38,6 +38,10 @@ ARROWS = (
     Binding("up", "previous_control", "previous", show=False, priority=True),
 )
 
+MOVE_HINT = "↑↓ move    ⏎ choose    esc cancel"
+ADD_HINT = "↑↓ move    ctrl+s queue    esc cancel"
+LIMIT_HINT = "↑↓ move    ⏎ apply    esc cancel"
+
 
 class ArrowKeys:
     """Up and down move between a dialog's controls.
@@ -67,6 +71,7 @@ class AddUrlModal(ArrowKeys, ModalScreen[list[str] | None]):
             yield Label("Add downloads — one URL per line")
             yield TextArea(clipboard_text(), id="urls")
             yield Button("Queue", variant="primary", id="ok")
+            yield Static(ADD_HINT, id="add-hint")
 
     def action_next_control(self) -> None:
         """Inside the text, down belongs to the cursor until the last line."""
@@ -100,6 +105,7 @@ class SpeedLimitModal(ArrowKeys, ModalScreen[str | None]):
             yield Label("Speed limit — e.g. 2M, 500K, or off")
             yield Input(self.current, id="rate")
             yield Button("Apply", variant="primary", id="ok")
+            yield Static(LIMIT_HINT, id="limit-hint")
 
     def on_button_pressed(self, _event: Button.Pressed) -> None:
         self.dismiss(self.query_one("#rate", Input).value.strip())
@@ -133,6 +139,7 @@ class DeleteModal(ArrowKeys, ModalScreen[str | None]):
             if self.has_file:
                 yield Button("Delete file from disk too  (d)", variant="error", id="disk")
             yield Button("Cancel  (esc)", id="cancel")
+            yield Static(MOVE_HINT, id="delete-hint")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss(event.button.id if event.button.id in ("list", "disk") else None)
@@ -195,6 +202,7 @@ class DuplicateModal(ArrowKeys, ModalScreen[str | None]):
             for choice in self.collision.choices:
                 yield self._button(choice)
             yield Button("Cancel  (esc)", id="cancel")
+            yield Static(MOVE_HINT, id="duplicate-hint")
 
     def _button(self, choice: str) -> Button:
         if choice == duplicates.SKIP:
@@ -243,6 +251,7 @@ class ConfirmModal(ArrowKeys, ModalScreen[bool]):
             yield Label(self.question)
             yield Button("Yes", variant="error", id="yes")
             yield Button("No", id="no")
+            yield Static(MOVE_HINT, id="confirm-hint")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss(event.button.id == "yes")

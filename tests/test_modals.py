@@ -4,6 +4,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Static, TextArea
 
 from dl import duplicates
+from dl.tui import modals as modals_module
 from dl.tui.modals import AddUrlModal, ConfirmModal, DeleteModal, DuplicateModal, SpeedLimitModal
 
 
@@ -126,3 +127,23 @@ async def test_down_moves_the_cursor_while_lines_remain_below():
         box = screen.query_one("#urls", TextArea)
         assert screen.focused is box, "focus left the box with a line still below"
         assert box.cursor_location[0] == 1
+
+
+def test_every_modal_names_the_arrow_keys():
+    """The keys all worked before; nothing on screen said so, which is why
+    the dialog looked like it needed a mouse."""
+    for hint in (modals_module.MOVE_HINT, modals_module.ADD_HINT, modals_module.LIMIT_HINT):
+        assert "↑↓" in hint
+        assert "esc" in hint
+
+
+def test_the_add_hint_names_the_submit_key():
+    assert "ctrl+s" in modals_module.ADD_HINT
+
+
+async def test_the_hint_is_on_screen():
+    screen = AddUrlModal()
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert str(screen.query_one("#add-hint", Static).render()) == modals_module.ADD_HINT

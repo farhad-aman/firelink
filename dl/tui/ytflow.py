@@ -52,6 +52,9 @@ class YouTubeSetupApp(App):
     #yt-head, #duplicate-head, #playlist-head { text-style: bold; }
     #yt-list, #picker-list, #picker-error, #duplicate-detail, #playlist-detail { height: auto; }
     #duplicate-box Button, #playlist-box Button { width: 100%; margin-top: 1; }
+    #add-hint, #limit-hint, #delete-hint, #duplicate-hint, #confirm-hint {
+        height: 1; padding-top: 1; text-style: dim;
+    }
     """
 
     def __init__(self, cfg: Config, urls: list[str], proxy: bool = False):

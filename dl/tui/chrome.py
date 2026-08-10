@@ -80,6 +80,10 @@ PlaylistScreen {
     text-style: bold; color: $dl-accent;
 }
 
+#add-hint, #limit-hint, #delete-hint, #duplicate-hint, #confirm-hint {
+    height: 1; padding-top: 1; text-style: dim;
+}
+
 #duplicate-detail, #picker-list, #picker-error, #settings-list, #settings-error,
 #playlist-detail {
     height: auto;
