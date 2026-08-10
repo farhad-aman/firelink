@@ -165,3 +165,33 @@ async def test_the_hint_is_on_screen():
     async with app.run_test() as pilot:
         await pilot.pause()
         assert str(screen.query_one("#add-hint", Static).render()) == modals_module.ADD_HINT
+
+
+async def test_up_moves_the_cursor_before_leaving_the_box():
+    """The mirror of down. Fixing one and not the other left the box
+    escapable upward from anywhere, mid-text."""
+    screen = AddUrlModal()
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        box = screen.query_one("#urls", TextArea)
+        box.text = "https://e.test/a.iso\nhttps://e.test/b.iso"
+        box.cursor_location = (1, 5)
+        await pilot.pause()
+        await pilot.press("up")
+        await pilot.pause()
+        assert screen.focused is box, "focus left the box with a line still above"
+        assert box.cursor_location[0] == 0
+
+
+async def test_up_leaves_the_box_from_the_start_of_the_text():
+    screen = AddUrlModal()
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        fill(screen)
+        screen.query_one("#urls", TextArea).cursor_location = (0, 0)
+        await pilot.pause()
+        await pilot.press("up")
+        await pilot.pause()
+        assert screen.focused is not screen.query_one("#urls", TextArea)

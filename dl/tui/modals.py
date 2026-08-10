@@ -86,6 +86,14 @@ class AddUrlModal(ArrowKeys, ModalScreen[list[str] | None]):
             return
         self.focus_next()
 
+    def action_previous_control(self) -> None:
+        """The mirror of down: up belongs to the cursor until the text starts."""
+        box = self.query_one("#urls", TextArea)
+        if self.focused is box and box.cursor_location != (0, 0):
+            box.action_cursor_up()
+            return
+        self.focus_previous()
+
     def action_queue(self) -> None:
         raw = self.query_one("#urls", TextArea).text
         urls = [line.strip() for line in raw.splitlines() if line.strip()]
