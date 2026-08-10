@@ -56,7 +56,11 @@ class ArrowKeys:
 
 
 class AddUrlModal(ArrowKeys, ModalScreen[list[str] | None]):
-    BINDINGS = [*ARROWS, ("escape", "dismiss_none", "cancel")]
+    BINDINGS = [
+        *ARROWS,
+        ("escape", "dismiss_none", "cancel"),
+        Binding("ctrl+s", "queue", "queue", priority=True),
+    ]
 
     def compose(self) -> ComposeResult:
         with Vertical(id="add-box"):
@@ -64,10 +68,21 @@ class AddUrlModal(ArrowKeys, ModalScreen[list[str] | None]):
             yield TextArea(clipboard_text(), id="urls")
             yield Button("Queue", variant="primary", id="ok")
 
-    def on_button_pressed(self, _event: Button.Pressed) -> None:
+    def action_next_control(self) -> None:
+        """Inside the text, down belongs to the cursor until the last line."""
+        box = self.query_one("#urls", TextArea)
+        if self.focused is box and box.cursor_location[0] < box.document.line_count - 1:
+            box.action_cursor_down()
+            return
+        self.focus_next()
+
+    def action_queue(self) -> None:
         raw = self.query_one("#urls", TextArea).text
         urls = [line.strip() for line in raw.splitlines() if line.strip()]
         self.dismiss(urls or None)
+
+    def on_button_pressed(self, _event: Button.Pressed) -> None:
+        self.action_queue()
 
     def action_dismiss_none(self) -> None:
         self.dismiss(None)

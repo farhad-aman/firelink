@@ -90,3 +90,39 @@ async def test_arrows_reach_the_duplicate_buttons():
     screen = DuplicateModal("x.iso", a_collision(), "1 MB")
     second = a_collision().choices[1]
     assert await press(screen, ["down", "enter"]) == second
+
+
+async def test_ctrl_s_queues_without_leaving_the_box():
+    assert await press(AddUrlModal(), ["ctrl+s"], fill) == ["https://e.test/x.iso"]
+
+
+async def test_ctrl_s_on_an_empty_box_queues_nothing():
+    def empty(screen):
+        screen.query_one("#urls", TextArea).text = ""
+
+    assert await press(AddUrlModal(), ["ctrl+s"], empty) is None
+
+
+async def test_down_leaves_the_box_when_the_cursor_is_on_the_last_line():
+    assert await press(AddUrlModal(), ["down", "enter"], fill) == ["https://e.test/x.iso"]
+
+
+async def test_down_moves_the_cursor_while_lines_remain_below():
+    """A second URL must still be reachable, so the arrow key belongs to the
+    text until there is nothing under the cursor."""
+    screen = AddUrlModal()
+
+    def two_lines(target):
+        box = target.query_one("#urls", TextArea)
+        box.text = "https://e.test/a.iso\nhttps://e.test/b.iso"
+        box.cursor_location = (0, 0)
+
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        two_lines(screen)
+        await pilot.press("down")
+        await pilot.pause()
+        box = screen.query_one("#urls", TextArea)
+        assert screen.focused is box, "focus left the box with a line still below"
+        assert box.cursor_location[0] == 1
