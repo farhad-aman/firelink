@@ -70,3 +70,23 @@ async def test_the_letter_shortcuts_still_work():
     assert await press(DeleteModal("f.iso", True), ["l"]) == "list"
     assert await press(DeleteModal("f.iso", True), ["d"]) == "disk"
     assert await press(DuplicateModal("x.iso", a_collision(), "1 MB"), ["s"]) == duplicates.SKIP
+
+
+async def test_down_then_enter_picks_the_second_button():
+    assert await press(DeleteModal("f.iso", True), ["down", "enter"]) == "disk"
+
+
+async def test_down_then_up_returns_to_the_first():
+    assert await press(DeleteModal("f.iso", True), ["down", "up", "enter"]) == "list"
+
+
+async def test_arrows_reach_the_confirm_buttons():
+    assert await press(ConfirmModal("go?"), ["down", "enter"]) is False
+    assert await press(ConfirmModal("go?"), ["down", "up", "enter"]) is True
+
+
+async def test_arrows_reach_the_duplicate_buttons():
+    """Whichever button is second, arrowing to it and pressing enter takes it."""
+    screen = DuplicateModal("x.iso", a_collision(), "1 MB")
+    second = a_collision().choices[1]
+    assert await press(screen, ["down", "enter"]) == second

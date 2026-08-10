@@ -1,6 +1,7 @@
 import subprocess
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, TextArea
@@ -32,8 +33,30 @@ def write_clipboard(text: str) -> bool:
     return done.returncode == 0
 
 
-class AddUrlModal(ModalScreen[list[str] | None]):
-    BINDINGS = [("escape", "dismiss_none", "cancel")]
+ARROWS = (
+    Binding("down", "next_control", "next", show=False, priority=True),
+    Binding("up", "previous_control", "previous", show=False, priority=True),
+)
+
+
+class ArrowKeys:
+    """Up and down move between a dialog's controls.
+
+    priority is not decoration: without it the focused Button consumes the
+    arrow keys and the action never runs. The bindings cannot live here
+    either — Textual collects BINDINGS from DOMNode subclasses only, so each
+    modal splices ARROWS into its own list.
+    """
+
+    def action_next_control(self) -> None:
+        self.focus_next()
+
+    def action_previous_control(self) -> None:
+        self.focus_previous()
+
+
+class AddUrlModal(ArrowKeys, ModalScreen[list[str] | None]):
+    BINDINGS = [*ARROWS, ("escape", "dismiss_none", "cancel")]
 
     def compose(self) -> ComposeResult:
         with Vertical(id="add-box"):
@@ -50,8 +73,8 @@ class AddUrlModal(ModalScreen[list[str] | None]):
         self.dismiss(None)
 
 
-class SpeedLimitModal(ModalScreen[str | None]):
-    BINDINGS = [("escape", "dismiss_none", "cancel")]
+class SpeedLimitModal(ArrowKeys, ModalScreen[str | None]):
+    BINDINGS = [*ARROWS, ("escape", "dismiss_none", "cancel")]
 
     def __init__(self, current: str):
         super().__init__()
@@ -73,10 +96,11 @@ class SpeedLimitModal(ModalScreen[str | None]):
         self.dismiss(None)
 
 
-class DeleteModal(ModalScreen[str | None]):
+class DeleteModal(ArrowKeys, ModalScreen[str | None]):
     """Dismisses with 'list', 'disk', or None."""
 
     BINDINGS = [
+        *ARROWS,
         ("escape", "dismiss_none", "cancel"),
         ("l", "from_list", "from list"),
         ("d", "from_disk", "from disk"),
@@ -109,7 +133,7 @@ class DeleteModal(ModalScreen[str | None]):
         self.dismiss(None)
 
 
-class DuplicateModal(ModalScreen[str | None]):
+class DuplicateModal(ArrowKeys, ModalScreen[str | None]):
     """Dismisses with a dl.duplicates decision, or None to cancel the batch.
 
     Which buttons appear depends on the kind of collision: a name that matches
@@ -118,6 +142,7 @@ class DuplicateModal(ModalScreen[str | None]):
     """
 
     BINDINGS = [
+        *ARROWS,
         ("escape", "dismiss_none", "cancel"),
         ("s", "pick_skip", "skip"),
         ("r", "pick_rename", "rename"),
@@ -191,8 +216,8 @@ class DuplicateModal(ModalScreen[str | None]):
         self.dismiss(None)
 
 
-class ConfirmModal(ModalScreen[bool]):
-    BINDINGS = [("escape", "dismiss_false", "cancel")]
+class ConfirmModal(ArrowKeys, ModalScreen[bool]):
+    BINDINGS = [*ARROWS, ("escape", "dismiss_false", "cancel")]
 
     def __init__(self, question: str):
         super().__init__()
