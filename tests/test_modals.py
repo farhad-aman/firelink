@@ -104,8 +104,26 @@ async def test_ctrl_s_on_an_empty_box_queues_nothing():
     assert await press(AddUrlModal(), ["ctrl+s"], empty) is None
 
 
-async def test_down_leaves_the_box_when_the_cursor_is_on_the_last_line():
-    assert await press(AddUrlModal(), ["down", "enter"], fill) == ["https://e.test/x.iso"]
+async def test_down_leaves_the_box_only_from_the_end_of_the_text():
+    """A clipboard fills the box with a single line, so the cursor starts on
+    the last line already. Leaving on the first press means never getting to
+    move through the text at all."""
+    assert await press(AddUrlModal(), ["down", "down", "enter"], fill) == [
+        "https://e.test/x.iso"
+    ]
+
+
+async def test_the_first_down_on_one_line_runs_to_the_end_of_it():
+    screen = AddUrlModal()
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        fill(screen)
+        await pilot.press("down")
+        await pilot.pause()
+        box = screen.query_one("#urls", TextArea)
+        assert screen.focused is box, "one press should not leave a box just filled"
+        assert box.cursor_location == box.document.end
 
 
 async def test_down_moves_the_cursor_while_lines_remain_below():

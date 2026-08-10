@@ -74,9 +74,14 @@ class AddUrlModal(ArrowKeys, ModalScreen[list[str] | None]):
             yield Static(ADD_HINT, id="add-hint")
 
     def action_next_control(self) -> None:
-        """Inside the text, down belongs to the cursor until the last line."""
+        """Inside the text, down belongs to the cursor until it reaches the end.
+
+        The end rather than the last line: a clipboard fills the box with one
+        line, so the cursor starts on the last line already and leaving there
+        would mean never moving through the text at all.
+        """
         box = self.query_one("#urls", TextArea)
-        if self.focused is box and box.cursor_location[0] < box.document.line_count - 1:
+        if self.focused is box and box.cursor_location != box.document.end:
             box.action_cursor_down()
             return
         self.focus_next()
