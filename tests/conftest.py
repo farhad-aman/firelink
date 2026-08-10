@@ -59,6 +59,28 @@ def isolate_state(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def guard_the_real_history():
+    """Name the test that writes into the real state directory.
+
+    isolate_state redirects STATE_DIR, but monkeypatch does not survive a
+    process boundary and the daemon listens on a fixed port, so a test can
+    still reach the dashboard's own daemon and have its hooks record there.
+    That has happened: six rows for a URL that exists nowhere but this suite.
+
+    A download finishing in another window during a run trips this too. That
+    is rare, and worth it for naming the culprit the one time it is not.
+    """
+    from pathlib import Path
+
+    log = Path.home() / ".local" / "state" / "dl" / "history.jsonl"
+    before = log.stat().st_size if log.exists() else -1
+    yield
+    after = log.stat().st_size if log.exists() else -1
+    if after != before:
+        pytest.fail(f"this test wrote to the real history at {log}")
+
+
+@pytest.fixture(autouse=True)
 def no_format_probe(monkeypatch):
     """Never let the options screen ask a real site what it offers.
 
