@@ -1,6 +1,20 @@
+import json
+from pathlib import Path
+
 import pytest
 
 from dl import spotify
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def embed_html(name: str) -> str:
+    """The page as the parser meets it: JSON inside the script tag."""
+    body = (FIXTURES / name).read_text()
+    return (
+        '<html><body><script id="__NEXT_DATA__" type="application/json">'
+        f"{body}</script></body></html>"
+    )
 
 
 def test_it_knows_a_spotify_url_from_any_other():
@@ -47,3 +61,50 @@ def test_a_filename_never_grows_past_what_a_filesystem_takes():
     track = spotify.Track(title="t" * 200, artists=("a" * 200,), duration=100)
     assert len(track.filename) <= 200
     assert track.filename.endswith(".m4a")
+
+
+def test_a_single_track_page_yields_one_track():
+    tracks = spotify.parse_embed(embed_html("spotify_track.json"))
+    assert len(tracks) == 1
+    assert tracks[0].title == "Never Gonna Give You Up"
+    assert tracks[0].artists == ("Rick Astley",)
+    assert tracks[0].duration == 213
+
+
+def test_a_playlist_page_yields_every_track_in_order():
+    tracks = spotify.parse_embed(embed_html("spotify_playlist.json"))
+    assert [t.title for t in tracks] == ["Animal", "Earrings", "Dai Dai"]
+    assert tracks[0].duration == 158
+
+
+def test_a_playlist_entry_splits_its_artists():
+    """The list page gives one subtitle string, not an array, so the split
+    happens here or the tags carry both names as a single artist."""
+    tracks = spotify.parse_embed(embed_html("spotify_playlist.json"))
+    assert tracks[2].artists == ("Shakira", "Burna Boy")
+
+
+def test_a_playlist_numbers_its_tracks_from_one():
+    tracks = spotify.parse_embed(embed_html("spotify_playlist.json"))
+    assert [t.number for t in tracks] == [1, 2, 3]
+
+
+def test_it_takes_the_largest_cover_offered():
+    tracks = spotify.parse_embed(embed_html("spotify_track.json"))
+    assert tracks[0].cover == "https://i.scdn.co/image/big"
+
+
+def test_a_page_without_the_data_block_is_an_error_not_an_empty_list():
+    """Silence here is the dangerous failure: an empty list looks like an
+    empty playlist and would report success having downloaded nothing."""
+    with pytest.raises(spotify.SpotifyUnreadable):
+        spotify.parse_embed("<html><body>nope</body></html>")
+
+
+def test_a_data_block_of_the_wrong_shape_is_also_an_error():
+    html = (
+        '<script id="__NEXT_DATA__" type="application/json">'
+        '{"props": {"pageProps": {}}}</script>'
+    )
+    with pytest.raises(spotify.SpotifyUnreadable):
+        spotify.parse_embed(html)

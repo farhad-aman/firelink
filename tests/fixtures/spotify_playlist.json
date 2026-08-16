@@ -1,0 +1,10 @@
+{"props": {"pageProps": {"state": {"data": {"entity": {
+  "type": "playlist",
+  "name": "Test Playlist",
+  "coverArt": {"sources": [{"url": "https://i.scdn.co/image/pl", "width": 640}]},
+  "trackList": [
+    {"title": "Animal", "subtitle": "KATSEYE", "duration": 158494, "uid": "a"},
+    {"title": "Earrings", "subtitle": "Malcolm Todd", "duration": 151500, "uid": "b"},
+    {"title": "Dai Dai", "subtitle": "Shakira, Burna Boy", "duration": 223448, "uid": "c"}
+  ]
+}}}}}}
