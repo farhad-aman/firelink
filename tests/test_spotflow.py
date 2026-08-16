@@ -57,9 +57,13 @@ def test_a_fully_confident_batch_needs_no_review_at_all():
 
 
 def test_the_summary_names_what_was_skipped_and_why():
-    lines = spotflow.summarise([match()], skipped=[match(title="Missing", choices=False)])
+    lines = spotflow.skipped_lines([match(title="Missing", choices=False)])
     assert any("Missing" in line for line in lines)
-    assert any("1" in line for line in lines)
+
+
+def test_nothing_skipped_says_nothing():
+    """The live view reports what was queued, so a clean run needs no line."""
+    assert spotflow.skipped_lines([]) == []
 
 
 def test_a_job_carries_the_details_its_file_should_wear():

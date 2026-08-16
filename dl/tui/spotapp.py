@@ -7,6 +7,7 @@ from .. import instance, spotflow
 from ..config import STATE_DIR, Config
 from ..theme import glyph, select
 from .spotadd import SpotifyAdder
+from .ytflow import watch
 
 
 class SpotifySetupApp(App):
@@ -34,6 +35,7 @@ class SpotifySetupApp(App):
         self.cancelled = False
         self.reviewed = False
         self.queued: list[dict] = []
+        self.skipped: list = []
         self.adder = SpotifyAdder(self, cfg, urls, state=self.state, progress=self._say)
 
     def compose(self):
@@ -53,8 +55,9 @@ class SpotifySetupApp(App):
         self.cancelled = adder.cancelled
         self.reviewed = adder.reviewed
         self.queued = adder.queued
+        self.skipped = adder.skipped
         self.notes = [f"  {glyph('⚠', icons)}  {note}" for note in adder.notes]
-        self.lines = self.notes + spotflow.summarise(adder.queued, adder.skipped, icons)
+        self.lines = self.notes + spotflow.skipped_lines(adder.skipped, icons)
         self.exit()
 
 
@@ -77,6 +80,11 @@ def run_spotify(cfg: Config, urls: list[str], state: Path | None = None):
             return [f"  {glyph('❌', select(cfg).icons)} {app.failed}"], True
         if app.cancelled:
             return [f"  {glyph('✖', select(cfg).icons)} cancelled — nothing queued"], True
-        return app.lines, False
+        if not app.queued:
+            return app.lines, False
+        # Watched here rather than left to a summary line, for the reason the
+        # YouTube flow already does it: a failure is seen in the shell that
+        # started it instead of discovered later, or never.
+        return app.lines + watch(cfg, app.queued, where), False
     finally:
         instance.release(where)

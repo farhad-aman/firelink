@@ -84,8 +84,10 @@ def jobs_for(matches, cfg, directory: Path) -> list[dict]:
     return jobs
 
 
-def summarise(queued, skipped, icons: bool = True) -> list[str]:
-    lines = [f"  {glyph('🎵', icons)} {len(queued)} queued from Spotify"]
-    for match in skipped:
-        lines.append(f"  {glyph('⏭', icons)}  skipped  {match.track.title} — no match found")
-    return lines
+def skipped_lines(skipped, icons: bool = True) -> list[str]:
+    """The tracks nothing was found for, named so a short playlist is visibly
+    short rather than quietly so."""
+    return [
+        f"  {glyph('⏭', icons)}  skipped  {match.track.title} — no match found"
+        for match in skipped
+    ]
