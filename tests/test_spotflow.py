@@ -123,3 +123,20 @@ def test_the_cover_is_fetched_through_the_proxy_when_its_host_is_listed(monkeypa
     cfg = dc_replace(config.defaults(), proxy_domains=("scdn.co",))
     spotflow.apply_tags(Path("/tmp/x.m4a"), job, cfg)
     assert seen["proxy"] == cfg.proxy
+
+
+def test_a_job_goes_through_the_proxy_when_its_host_is_listed():
+    """The search and the download are both YouTube requests. Proxying only
+    the search finds the video and then fails to fetch it."""
+    from dataclasses import replace as dc_replace
+
+    cfg = dc_replace(config.defaults(), proxy_domains=("youtube.com",))
+    m = match(url="https://www.youtube.com/watch?v=abc")
+    job = spotflow.jobs_for([m], cfg, Path("/tmp"))[0]
+    assert job["proxy"] == cfg.proxy
+
+
+def test_a_job_is_direct_when_its_host_is_not_listed():
+    m = match(url="https://www.youtube.com/watch?v=abc")
+    job = spotflow.jobs_for([m], config.defaults(), Path("/tmp"))[0]
+    assert job["proxy"] == ""

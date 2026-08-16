@@ -350,3 +350,25 @@ def test_a_torrent_row_is_labelled_a_torrent(cfg):
 def test_a_plain_download_is_unaffected(cfg):
     row = row_from_status(status(), cfg)
     assert row.name == "ubuntu.iso"
+
+
+def test_row_from_job_categorises_an_audio_download_as_audio(cfg):
+    """Every yt-dlp job read as video, so a Spotify m4a landed in the Music
+    folder wearing the video badge."""
+    from dl.tui.table import row_from_job
+
+    job = yt_job(choices={"container": "m4a"}, outname="X - Song.m4a")
+    assert row_from_job(job, cfg).category.name == "audio"
+
+
+def test_row_from_job_still_categorises_a_video_download_as_video(cfg):
+    from dl.tui.table import row_from_job
+
+    assert row_from_job(yt_job(), cfg).category.name == "video"
+
+
+def test_row_from_job_categorises_by_the_file_once_it_has_landed(cfg):
+    from dl.tui.table import row_from_job
+
+    job = yt_job(choices={"container": "m4a"}, file="/tmp/Music/X - Song.m4a")
+    assert row_from_job(job, cfg).category.name == "audio"

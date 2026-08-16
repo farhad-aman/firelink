@@ -66,7 +66,9 @@ def jobs_for(matches, cfg, directory: Path) -> list[dict]:
             match.pick.candidate.url,
             directory,
             AUDIO,
-            proxy="",
+            # The search and the download are the same host. Proxying one and
+            # not the other finds the video and then cannot fetch it.
+            proxy=routing.proxy_for(match.pick.candidate.url, cfg),
             cookies_from=cfg.cookies_from,
         )
         job["outname"] = match.track.filename
