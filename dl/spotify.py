@@ -1,9 +1,14 @@
+import base64
 import json
 import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
+
+API = "https://api.spotify.com/v1"
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+PAGE = 100
 
 HOST = "open.spotify.com"
 KINDS = ("track", "album", "playlist")
@@ -138,16 +143,83 @@ def api_configured(cfg) -> bool:
     return bool(getattr(cfg, "spotify_id", "") and getattr(cfg, "spotify_secret", ""))
 
 
-def fetch(url: str, timeout: float = 25) -> Listing:
+def track_from_api(item: dict, number: int = 0) -> Track:
+    album = item.get("album") or {}
+    images = album.get("images") or []
+    cover = ""
+    if images:
+        cover = str(max(images, key=lambda i: int(i.get("width") or 0)).get("url") or "")
+    return Track(
+        title=str(item.get("name") or ""),
+        artists=tuple(str(a.get("name", "")) for a in item.get("artists", []) if a),
+        duration=int(item.get("duration_ms") or 0) // 1000,
+        album=str(album.get("name") or ""),
+        number=number or int(item.get("track_number") or 0),
+        cover=cover,
+    )
+
+
+def tracks_from_items(items) -> list[Track]:
+    """Playlist rows wrap their track and some rows have none."""
+    found = []
+    for row in items:
+        inner = row.get("track") if "track" in row else row
+        if not inner or not inner.get("name"):
+            continue
+        found.append(track_from_api(inner, number=len(found) + 1))
+    return found
+
+
+def _token(cfg, timeout: float) -> str:
+    pair = f"{cfg.spotify_id}:{cfg.spotify_secret}".encode()
+    request = urllib.request.Request(
+        TOKEN_URL,
+        data=urlencode({"grant_type": "client_credentials"}).encode(),
+        headers={"Authorization": f"Basic {base64.b64encode(pair).decode()}"},
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return str(json.loads(response.read().decode())["access_token"])
+
+
+def _get(url: str, token: str, timeout: float) -> dict:
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode())
+
+
+def api_tracks(kind: str, spotify_id: str, cfg, timeout: float = 25) -> list[Track]:
+    """Every track, following the pages until there are none left."""
+    token = _token(cfg, timeout)
+    if kind == "track":
+        return [track_from_api(_get(f"{API}/tracks/{spotify_id}", token, timeout))]
+    where = "playlists" if kind == "playlist" else "albums"
+    url = f"{API}/{where}/{spotify_id}/tracks?{urlencode({'limit': PAGE})}"
+    items = []
+    while url:
+        page = _get(url, token, timeout)
+        items.extend(page.get("items") or [])
+        url = page.get("next")
+    return tracks_from_items(items)
+
+
+def fetch(url: str, cfg=None, timeout: float = 25) -> Listing:
     """The tracks behind a Spotify address.
 
-    truncated is a guess and says so: a full page is the only evidence
-    available, because the response carries no total to compare against.
+    truncated is a guess and says so: the public page carries no total to
+    compare against. The API does, so a listing read through it is never
+    flagged.
     """
     parsed = parse_url(url)
     if parsed is None:
         raise SpotifyUnreadable(f"not a Spotify track, album or playlist: {url}")
     kind, spotify_id = parsed
+    if api_configured(cfg):
+        try:
+            return Listing(api_tracks(kind, spotify_id, cfg, timeout), kind, False)
+        except (urllib.error.URLError, OSError, ValueError, KeyError):
+            # A typo in the config must not make every Spotify link stop
+            # working when the public page would have answered.
+            pass
     request = urllib.request.Request(
         f"{EMBED}/{kind}/{spotify_id}", headers={"User-Agent": AGENT}
     )

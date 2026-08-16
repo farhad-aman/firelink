@@ -1,9 +1,10 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from dl import spotify
+from dl import config, spotify
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -193,3 +194,94 @@ def test_a_network_failure_is_reported_as_unreadable(monkeypatch):
     monkeypatch.setattr(spotify.urllib.request, "urlopen", boom)
     with pytest.raises(spotify.SpotifyUnreadable, match="no route"):
         spotify.fetch("https://open.spotify.com/track/abc")
+
+
+def test_the_api_is_not_used_when_no_credentials_are_set(monkeypatch):
+    monkeypatch.setattr(
+        spotify.urllib.request,
+        "urlopen",
+        lambda r, timeout=0: Fake(embed_html("spotify_playlist.json")),
+    )
+    listing = spotify.fetch("https://open.spotify.com/playlist/p1", cfg=config.defaults())
+    assert len(listing.tracks) == 3
+
+
+def api_row(name):
+    return {
+        "track": {
+            "name": name,
+            "duration_ms": 1000,
+            "artists": [{"name": "A"}],
+            "album": {"name": "Alb", "images": [{"url": "u", "width": 640}]},
+        }
+    }
+
+
+def test_the_api_reads_every_page_of_a_long_playlist(monkeypatch):
+    """The whole point of the credentials: the public page stops at 50 and
+    cannot say it did."""
+    pages = {
+        0: {
+            "items": [api_row(f"t{i}") for i in range(100)],
+            "total": 150,
+            "next": "https://api.spotify.com/v1/playlists/p1/tracks?offset=100",
+        },
+        100: {
+            "items": [api_row(f"t{i}") for i in range(100, 150)],
+            "total": 150,
+            "next": None,
+        },
+    }
+
+    def fake_open(request, timeout=0):
+        if "accounts.spotify.com" in request.full_url:
+            return Fake(json.dumps({"access_token": "t0k", "expires_in": 3600}))
+        offset = 100 if "offset=100" in request.full_url else 0
+        return Fake(json.dumps(pages[offset]))
+
+    monkeypatch.setattr(spotify.urllib.request, "urlopen", fake_open)
+    cfg = replace(config.defaults(), spotify_id="a", spotify_secret="b")
+    listing = spotify.fetch("https://open.spotify.com/playlist/p1", cfg=cfg)
+    assert len(listing.tracks) == 150
+    assert listing.truncated is False
+
+
+def test_an_api_track_carries_its_album_and_number():
+    parsed = spotify.track_from_api(
+        {
+            "name": "Song",
+            "duration_ms": 183000,
+            "artists": [{"name": "X"}, {"name": "Y"}],
+            "album": {
+                "name": "Alb",
+                "images": [{"url": "small", "width": 64}, {"url": "big", "width": 640}],
+            },
+        },
+        number=6,
+    )
+    assert parsed.title == "Song"
+    assert parsed.artists == ("X", "Y")
+    assert parsed.duration == 183
+    assert parsed.album == "Alb"
+    assert parsed.number == 6
+    assert parsed.cover == "big"
+
+
+def test_a_playlist_entry_with_no_track_is_skipped():
+    """A removed or region-locked entry comes back as a null track. Reading
+    it as a Track puts an empty row in the review screen."""
+    assert spotify.tracks_from_items([{"track": None}, {"track": {}}]) == []
+
+
+def test_credentials_the_api_rejects_fall_back_to_the_public_page(monkeypatch):
+    """A typo in the config must not make every Spotify link stop working."""
+
+    def fake_open(request, timeout=0):
+        if "accounts.spotify.com" in request.full_url:
+            raise OSError("401 Unauthorized")
+        return Fake(embed_html("spotify_playlist.json"))
+
+    monkeypatch.setattr(spotify.urllib.request, "urlopen", fake_open)
+    cfg = replace(config.defaults(), spotify_id="bad", spotify_secret="bad")
+    listing = spotify.fetch("https://open.spotify.com/playlist/p1", cfg=cfg)
+    assert len(listing.tracks) == 3
