@@ -92,3 +92,75 @@ def test_a_candidate_with_no_duration_is_rejected_rather_than_guessed():
     """A flat listing reports NA for some entries. Guessing is how the wrong
     file arrives with nothing to have caught it."""
     assert spotmatch.score(ASTLEY, candidate("Never Gonna Give You Up", "Rick Astley", 0)) is None
+
+
+def test_the_search_command_asks_for_a_flat_listing_of_five():
+    argv = spotmatch.search_command("Rick Astley Never Gonna", 5, "", "")
+    assert argv[-1] == "ytsearch5:Rick Astley Never Gonna"
+    assert "--flat-playlist" in argv, "extracting each result would take minutes"
+    assert "--skip-download" in argv
+
+
+def test_the_search_command_carries_the_proxy_and_cookies_when_set():
+    argv = spotmatch.search_command("q", 5, "http://127.0.0.1:2080", "chrome")
+    assert "--proxy" in argv and "http://127.0.0.1:2080" in argv
+    assert "--cookies-from-browser" in argv and "chrome" in argv
+
+
+def test_the_search_command_omits_them_when_unset():
+    argv = spotmatch.search_command("q", 5, "", "")
+    assert "--proxy" not in argv
+    assert "--cookies-from-browser" not in argv
+
+
+def test_candidates_are_read_back_off_the_printed_lines():
+    output = (
+        "https://y.test/1\t214\tRick Astley\tNever Gonna Give You Up\n"
+        "https://y.test/2\t65\tCSAA\tInsurAAAnce\n"
+    )
+    found = spotmatch.parse_candidates(output)
+    assert [c.url for c in found] == ["https://y.test/1", "https://y.test/2"]
+    assert found[0].duration == 214
+    assert found[0].uploader == "Rick Astley"
+    assert found[0].title == "Never Gonna Give You Up"
+
+
+def test_a_title_holding_a_tab_survives_being_read_back():
+    """The title is last on the line so its own tabs cannot shift the fields
+    before it, which is the same reason playlist.py puts the title last."""
+    found = spotmatch.parse_candidates("https://y.test/1\t200\tUp\tA\tB\n")
+    assert found[0].title == "A\tB"
+
+
+def test_a_line_yt_dlp_could_not_fill_in_is_dropped():
+    found = spotmatch.parse_candidates(
+        "https://y.test/1\tNA\tUp\tTitle\nhttps://y.test/2\t200\tUp\tTitle\n"
+    )
+    assert [c.url for c in found] == ["https://y.test/2"]
+
+
+def test_junk_output_yields_nothing_rather_than_raising():
+    assert spotmatch.parse_candidates("some warning line\n") == []
+    assert spotmatch.parse_candidates("") == []
+
+
+def test_a_rate_limit_is_raised_rather_than_read_as_no_results(monkeypatch):
+    """Flattening this into "nothing found" would skip every remaining track
+    of a playlist for a reason that has nothing to do with the tracks."""
+
+    class Done:
+        stdout = ""
+        stderr = "ERROR: unable to download: HTTP Error 429: Too Many Requests"
+
+    monkeypatch.setattr(spotmatch.subprocess, "run", lambda *a, **k: Done())
+    with pytest.raises(spotmatch.Throttled):
+        spotmatch.find(ASTLEY)
+
+
+def test_a_genuine_absence_of_results_is_not_a_throttle(monkeypatch):
+    class Done:
+        stdout = ""
+        stderr = "WARNING: unable to extract something harmless"
+
+    monkeypatch.setattr(spotmatch.subprocess, "run", lambda *a, **k: Done())
+    assert spotmatch.find(ASTLEY) == []
