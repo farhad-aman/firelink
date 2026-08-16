@@ -8,6 +8,22 @@ from dl import spotify
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+class Fake:
+    """The bytes urlopen would have returned."""
+
+    def __init__(self, text: str):
+        self._text = text
+
+    def read(self) -> bytes:
+        return self._text.encode()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
 def embed_html(name: str) -> str:
     """The page as the parser meets it: JSON inside the script tag."""
     body = (FIXTURES / name).read_text()
@@ -108,3 +124,72 @@ def test_a_data_block_of_the_wrong_shape_is_also_an_error():
     )
     with pytest.raises(spotify.SpotifyUnreadable):
         spotify.parse_embed(html)
+
+
+def test_it_fetches_the_embed_page_for_the_parsed_kind_and_id(monkeypatch):
+    asked = {}
+
+    def fake_open(request, timeout=0):
+        asked["url"] = request.full_url
+        asked["agent"] = request.get_header("User-agent")
+        return Fake(embed_html("spotify_track.json"))
+
+    monkeypatch.setattr(spotify.urllib.request, "urlopen", fake_open)
+    listing = spotify.fetch("https://open.spotify.com/track/abc123")
+    assert asked["url"] == "https://open.spotify.com/embed/track/abc123"
+    assert asked["agent"], "a default urllib agent gets a different page back"
+    assert listing.kind == "track"
+    assert len(listing.tracks) == 1
+
+
+def test_a_short_playlist_is_not_flagged_as_cut_short(monkeypatch):
+    monkeypatch.setattr(
+        spotify.urllib.request,
+        "urlopen",
+        lambda r, timeout=0: Fake(embed_html("spotify_playlist.json")),
+    )
+    assert spotify.fetch("https://open.spotify.com/playlist/p1").truncated is False
+
+
+def test_exactly_fifty_tracks_is_treated_as_probably_cut_short(monkeypatch):
+    """The embed page carries no total, so a full page is the only signal
+    there is. A false warning costs a sentence; a silent truncation costs
+    two thirds of a playlist."""
+    entries = [
+        {"title": f"t{i}", "subtitle": "a", "duration": 1000} for i in range(spotify.EMBED_LIMIT)
+    ]
+    page = json.dumps(
+        {"props": {"pageProps": {"state": {"data": {"entity": {"name": "p", "trackList": entries}}}}}}
+    )
+    html = f'<script id="__NEXT_DATA__" type="application/json">{page}</script>'
+    monkeypatch.setattr(spotify.urllib.request, "urlopen", lambda r, timeout=0: Fake(html))
+    listing = spotify.fetch("https://open.spotify.com/playlist/p1")
+    assert listing.truncated is True
+    assert len(listing.tracks) == 50
+
+
+def test_a_single_track_is_never_flagged_as_cut_short(monkeypatch):
+    monkeypatch.setattr(
+        spotify.urllib.request,
+        "urlopen",
+        lambda r, timeout=0: Fake(embed_html("spotify_track.json")),
+    )
+    assert spotify.fetch("https://open.spotify.com/track/abc").truncated is False
+
+
+def test_an_address_this_cannot_read_says_so_before_any_request(monkeypatch):
+    def explode(*a, **k):
+        raise AssertionError("should not have made a request")
+
+    monkeypatch.setattr(spotify.urllib.request, "urlopen", explode)
+    with pytest.raises(spotify.SpotifyUnreadable):
+        spotify.fetch("https://open.spotify.com/episode/abc")
+
+
+def test_a_network_failure_is_reported_as_unreadable(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("no route to host")
+
+    monkeypatch.setattr(spotify.urllib.request, "urlopen", boom)
+    with pytest.raises(spotify.SpotifyUnreadable, match="no route"):
+        spotify.fetch("https://open.spotify.com/track/abc")

@@ -1,11 +1,22 @@
 import json
 import re
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 HOST = "open.spotify.com"
 KINDS = ("track", "album", "playlist")
 MAX_NAME = 200
+
+EMBED = "https://open.spotify.com/embed"
+EMBED_LIMIT = 50
+AGENT = "Mozilla/5.0"
+TRUNCATION_ADVICE = (
+    f"Spotify's public page gives at most {EMBED_LIMIT} tracks and does not say "
+    "how many it held. Set client_id and client_secret under [spotify] in the "
+    "config to read the whole thing."
+)
 
 _ILLEGAL = re.compile(r'[/\\:*?"<>|\x00-\x1f]+')
 _RUNS = re.compile(r"\s+")
@@ -113,6 +124,39 @@ def parse_embed(html: str) -> list[Track]:
             cover=cover,
         )
     ]
+
+
+@dataclass(frozen=True)
+class Listing:
+    tracks: list[Track]
+    kind: str
+    truncated: bool
+
+
+def fetch(url: str, timeout: float = 25) -> Listing:
+    """The tracks behind a Spotify address.
+
+    truncated is a guess and says so: a full page is the only evidence
+    available, because the response carries no total to compare against.
+    """
+    parsed = parse_url(url)
+    if parsed is None:
+        raise SpotifyUnreadable(f"not a Spotify track, album or playlist: {url}")
+    kind, spotify_id = parsed
+    request = urllib.request.Request(
+        f"{EMBED}/{kind}/{spotify_id}", headers={"User-Agent": AGENT}
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            html = response.read().decode("utf-8", "replace")
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        raise SpotifyUnreadable(str(exc)) from None
+    tracks = parse_embed(html)
+    return Listing(
+        tracks=tracks,
+        kind=kind,
+        truncated=kind != "track" and len(tracks) >= EMBED_LIMIT,
+    )
 
 
 def _split(subtitle: str) -> tuple[str, ...]:
