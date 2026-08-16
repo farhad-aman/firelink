@@ -60,13 +60,13 @@ StatusBar { height: 1; dock: top; padding: 0 1; }
 
 AddUrlModal, SpeedLimitModal, ConfirmModal, DeleteModal, PickerScreen, DuplicateModal,
 SettingsMenuScreen, FormScreen, ProxyScreen, HeadersScreen, CategoriesScreen,
-PlaylistScreen {
+PlaylistScreen, MatchScreen {
     align: center middle;
     background: $dl-veil;
 }
 
 #add-box, #limit-box, #confirm-box, #delete-box, #picker-box, #duplicate-box,
-#settings-box, #playlist-box {
+#settings-box, #playlist-box, #match-box {
     width: 72;
     height: auto;
     max-height: 80%;
@@ -76,16 +76,16 @@ PlaylistScreen {
 }
 
 #add-box Label, #limit-box Label, #confirm-box Label, #delete-box Label,
-#duplicate-head, #picker-head, #settings-head, #playlist-head {
+#duplicate-head, #picker-head, #settings-head, #playlist-head, #match-head {
     text-style: bold; color: $dl-accent;
 }
 
-#add-hint, #limit-hint, #delete-hint, #duplicate-hint, #confirm-hint {
+#add-hint, #limit-hint, #delete-hint, #duplicate-hint, #confirm-hint, #match-hint {
     height: 1; padding-top: 1; text-style: dim;
 }
 
 #duplicate-detail, #picker-list, #picker-error, #settings-list, #settings-error,
-#playlist-detail {
+#playlist-detail, #match-list {
     height: auto;
     color: $dl-text;
 }
