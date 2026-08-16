@@ -1364,3 +1364,42 @@ async def test_changing_the_theme_repaints_the_chrome(cfg):
         )
         await pilot.pause()
         assert app.stylesheet._variables["dl-accent"] == theme_module.THEMES["dusk"].accent
+
+
+async def test_a_spotify_link_from_the_add_box_goes_to_the_spotify_flow(cfg, tmp_path, monkeypatch):
+    """yt-dlp claims Spotify addresses too, with an extractor named DRM, so
+    asking it first sent every pasted link into that dead end."""
+    from dl.tui import app as app_module
+
+    monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
+    seen = {}
+
+    class FakeAdder:
+        def __init__(self, host, cfg, urls, state=None, spawn=None, progress=None):
+            seen["urls"] = list(urls)
+            self.failed = ""
+            self.cancelled = False
+            self.queued = []
+            self.skipped = []
+            self.notes = []
+
+        def start(self, finished=None):
+            if finished is not None:
+                finished(self)
+
+    monkeypatch.setattr(app_module.spotadd, "SpotifyAdder", FakeAdder)
+    monkeypatch.setattr(
+        app_module.ytadd,
+        "YouTubeAdder",
+        lambda *a, **k: pytest.fail("a Spotify link reached the YouTube flow"),
+    )
+    client = FakeClient()
+    app = DlApp(cfg, client)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("a")
+        await pilot.pause()
+        type_url(pilot, app, "https://open.spotify.com/track/abc123")
+        await pilot.pause()
+    assert seen["urls"] == ["https://open.spotify.com/track/abc123"]
+    assert client.added == [], "a Spotify link must not be handed to aria2"

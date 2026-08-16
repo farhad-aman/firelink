@@ -16,6 +16,7 @@ from .. import (
     routing,
     search,
     sort,
+    spotify,
     started,
     theme,
     ytdlp,
@@ -28,7 +29,7 @@ from .chrome import CSS, DONE_KEYS, HINT, HINT_DONE, HINT_KEYS, render_hint, spl
 from .completed import CompletedTable, record_path
 from .deleting import Deleting
 from .queueing import Queueing
-from . import ytadd, ytflow
+from . import spotadd, ytadd, ytflow
 from .modals import AddUrlModal, SpeedLimitModal, write_clipboard
 from .searchbar import INPUT_ID, NOTE_ID, SearchCancelled, SearchInput, SearchNote, empty_note
 from .status import StatusBar, stats_from
@@ -95,6 +96,7 @@ class DlApp(App):
         self.done_order = sort.DONE_DEFAULT
         self.rows_raw: list = []
         self.youtube_adder = None
+        self.spotify_adder = None
         self.search_note = SearchNote(self.theme_data, id=NOTE_ID)
         self.search_input: SearchInput | None = None
         self.queueing = Queueing(self, cfg, client, self.history_log)
@@ -617,7 +619,17 @@ class DlApp(App):
 
         aria2 handed a watch page downloads the HTML, so YouTube URLs go to
         yt-dlp through its own questions instead.
+
+        Spotify comes off first. yt-dlp claims those addresses too, with an
+        extractor named DRM whose whole job is to report that the audio cannot
+        be fetched — so asking it would send every link into that dead end.
         """
+        songs = [url for url in urls if spotify.is_spotify(url)]
+        if songs:
+            urls = [url for url in urls if url not in songs]
+            self._add_spotify(songs)
+            if not urls:
+                return
         watches = [url for url in urls if ytdlp.handles(url)]
         direct = [url for url in urls if not ytdlp.handles(url)]
         if not direct:
@@ -636,6 +648,27 @@ class DlApp(App):
         adder = ytadd.YouTubeAdder(self, self.cfg, urls, state=STATE_DIR, spawn=ytflow.spawn)
         self.youtube_adder = adder
         adder.start(self._youtube_added)
+
+    def _add_spotify(self, urls: list[str]) -> None:
+        if self.spotify_adder is not None:
+            self.notify("already asking about a Spotify download", severity="warning")
+            return
+        adder = spotadd.SpotifyAdder(self, self.cfg, urls, state=STATE_DIR, spawn=ytflow.spawn)
+        self.spotify_adder = adder
+        adder.start(self._spotify_added)
+
+    def _spotify_added(self, adder) -> None:
+        self.spotify_adder = None
+        for note in adder.notes:
+            self.notify(note, severity="warning")
+        if adder.failed:
+            self.notify(adder.failed, severity="error")
+        elif adder.cancelled:
+            self.notify("cancelled — nothing queued")
+        elif adder.queued:
+            self.notify(f"queued {len(adder.queued)} from Spotify")
+        if adder.skipped:
+            self.notify(f"skipped {len(adder.skipped)} — no match found")
 
     def _youtube_added(self, adder) -> None:
         self.youtube_adder = None

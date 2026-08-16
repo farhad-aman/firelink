@@ -48,6 +48,12 @@ def apply_tags(landed: Path | None, job: dict, cfg) -> bool:
     return tagging.apply(landed, track, cover)
 
 
+def music_dir(cfg) -> Path:
+    """Where an m4a lands. Routing decides by extension, so the name only has
+    to carry the suffix for the audio category to claim it."""
+    return routing.resolve("", "track.m4a", cfg).path
+
+
 def needs_review(matches) -> list:
     """The matches a person has to look at before anything downloads.
 

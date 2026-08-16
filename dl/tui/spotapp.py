@@ -1,27 +1,16 @@
-import asyncio
 from pathlib import Path
 
 from textual.app import App
 from textual.widgets import Static
 
-from .. import instance, routing, spotflow, spotify, spotresolve
+from .. import instance, spotflow
 from ..config import STATE_DIR, Config
 from ..theme import glyph, select
-from .matchscreen import MatchScreen
-from .ytflow import spawn
-
-
-SEARCH_HOST = "https://www.youtube.com/"
-
-
-def music_dir(cfg: Config) -> Path:
-    """Where an m4a lands. Routing decides by extension, so the name only has
-    to carry the suffix for the audio category to claim it."""
-    return routing.resolve("", "track.m4a", cfg).path
+from .spotadd import SpotifyAdder
 
 
 class SpotifySetupApp(App):
-    """Resolve a Spotify address, confirm what was doubtful, queue the rest."""
+    """Asks what a Spotify link holds, then queues it, one link at a time."""
 
     CSS = """
     Screen { align: center middle; }
@@ -39,79 +28,33 @@ class SpotifySetupApp(App):
         self.urls = list(urls)
         self.state = state or STATE_DIR
         self.theme_data = select(cfg)
-        self.notes: list[str] = []
         self.lines: list[str] = []
+        self.notes: list[str] = []
         self.failed = ""
         self.cancelled = False
         self.reviewed = False
         self.queued: list[dict] = []
+        self.adder = SpotifyAdder(self, cfg, urls, state=self.state, progress=self._say)
 
     def compose(self):
         yield Static("  reading Spotify…", id="spot-status")
 
     def on_mount(self) -> None:
-        self.run_worker(self._start(), exclusive=False)
+        self.adder.start(self._finished)
 
-    async def _start(self) -> None:
-        try:
-            listing = await asyncio.to_thread(spotify.fetch, self.urls[0], self.cfg)
-        except spotify.SpotifyUnreadable as exc:
-            self.failed = str(exc)
-            self.exit()
-            return
-        if listing.truncated:
-            self.notes.append(
-                f"  {glyph('⚠', self.theme_data.icons)}  {spotify.TRUNCATION_ADVICE}"
-            )
-
-        def progress(done: int, total: int) -> None:
-            self.call_from_thread(self._say, f"  matched {done} of {total}…")
-
-        matches = await asyncio.to_thread(
-            spotresolve.resolve,
-            listing.tracks,
-            # The search is a YouTube request, so it follows YouTube's rule
-            # rather than Spotify's — and the proxy list decides, not the fact
-            # that a proxy is configured.
-            proxy=routing.proxy_for(SEARCH_HOST, self.cfg),
-            cookies_from=self.cfg.cookies_from,
-            progress=progress,
-        )
-        doubtful = spotflow.needs_review(matches)
-        if not doubtful:
-            self._queue(matches, matches)
-            return
-        self.reviewed = True
-        confident = [m for m in matches if m.confident]
-
-        def decided(chosen) -> None:
-            if chosen is None:
-                self.cancelled = True
-                self.exit()
-                return
-            self._queue(confident + list(chosen), matches)
-
-        self.push_screen(MatchScreen(doubtful, confident_count=len(confident)), decided)
-
-    def _say(self, text: str) -> None:
+    def _say(self, done: int, total: int) -> None:
         found = self.query("#spot-status")
         if found:
-            found.first(Static).update(text)
+            found.first(Static).update(f"  matched {done} of {total}…")
 
-    def _queue(self, accepted, considered) -> None:
-        """considered is every track the listing held, not just the kept ones.
-
-        A track skipped at the review screen never reaches `accepted`, so
-        without the wider list its name is lost and the playlist comes up
-        quietly short.
-        """
-        jobs = spotflow.jobs_for(accepted, self.cfg, music_dir(self.cfg))
-        for job in jobs:
-            spawn(job, self.state, self.cfg.general.max_concurrent)
-        self.queued = jobs
-        kept = {match.track for match in accepted if match.pick}
-        skipped = [match for match in considered if match.track not in kept]
-        self.lines = self.notes + spotflow.summarise(jobs, skipped, self.theme_data.icons)
+    def _finished(self, adder: SpotifyAdder) -> None:
+        icons = self.theme_data.icons
+        self.failed = adder.failed
+        self.cancelled = adder.cancelled
+        self.reviewed = adder.reviewed
+        self.queued = adder.queued
+        self.notes = [f"  {glyph('⚠', icons)}  {note}" for note in adder.notes]
+        self.lines = self.notes + spotflow.summarise(adder.queued, adder.skipped, icons)
         self.exit()
 
 

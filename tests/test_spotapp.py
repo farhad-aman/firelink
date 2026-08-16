@@ -1,7 +1,7 @@
 from dl import config, spotify
 from dl.spotmatch import Candidate, Scored
 from dl.spotresolve import Match
-from dl.tui import spotapp
+from dl.tui import spotadd, spotapp
 
 
 def a_track(title="T"):
@@ -23,10 +23,12 @@ def a_match(title="T", confident=True, choices=True):
 
 async def run(monkeypatch, tmp_path, listing, matches, keys=()):
     """Drive the app with the network replaced on both sides."""
-    monkeypatch.setattr(spotapp.spotify, "fetch", lambda url, cfg=None, timeout=0: listing)
-    monkeypatch.setattr(spotapp.spotresolve, "resolve", lambda tracks, **kw: matches)
+    monkeypatch.setattr(spotadd.spotify, "fetch", lambda url, cfg=None, timeout=0: listing)
+    monkeypatch.setattr(spotadd.spotresolve, "resolve", lambda tracks, **kw: matches)
     started = []
-    monkeypatch.setattr(spotapp, "spawn", lambda job, state=None, cap=0: started.append(job))
+    monkeypatch.setattr(
+        spotadd, "default_spawn", lambda job, state=None, cap=0: started.append(job)
+    )
     app = spotapp.SpotifySetupApp(
         config.defaults(), ["https://open.spotify.com/track/x"], state=tmp_path
     )
@@ -77,7 +79,7 @@ async def test_a_listing_that_cannot_be_read_fails_without_a_screen(monkeypatch,
     def boom(url, cfg=None, timeout=0):
         raise spotify.SpotifyUnreadable("page changed")
 
-    monkeypatch.setattr(spotapp.spotify, "fetch", boom)
+    monkeypatch.setattr(spotadd.spotify, "fetch", boom)
     app = spotapp.SpotifySetupApp(
         config.defaults(), ["https://open.spotify.com/track/x"], state=tmp_path
     )
