@@ -133,6 +133,11 @@ class Listing:
     truncated: bool
 
 
+def api_configured(cfg) -> bool:
+    """Both halves, or neither. One alone cannot authenticate."""
+    return bool(getattr(cfg, "spotify_id", "") and getattr(cfg, "spotify_secret", ""))
+
+
 def fetch(url: str, timeout: float = 25) -> Listing:
     """The tracks behind a Spotify address.
 

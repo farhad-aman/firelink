@@ -279,3 +279,32 @@ def test_a_kept_category_still_takes_its_defaults_for_missing_fields(tmp_path):
     assert str(video.dir).endswith("Elsewhere")
     assert "mkv" in video.ext
     assert video.icon == config.DEFAULT_CATEGORIES["video"].icon
+
+
+def test_spotify_credentials_are_read_from_the_config(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('[spotify]\nclient_id = "abc"\nclient_secret = "xyz"\n')
+    cfg = config.load(path)
+    assert cfg.spotify_id == "abc"
+    assert cfg.spotify_secret == "xyz"
+
+
+def test_no_spotify_section_leaves_the_credentials_empty(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('[general]\ndefault_dir = "~/Downloads"\n')
+    cfg = config.load(path)
+    assert cfg.spotify_id == ""
+    assert cfg.spotify_secret == ""
+
+
+def test_half_configured_credentials_do_not_count_as_configured():
+    """One key without the other cannot authenticate. Treating it as
+    configured would fail every playlist with an auth error instead of
+    quietly using the public page."""
+    from dataclasses import replace
+
+    from dl import spotify
+
+    cfg = config.defaults()
+    assert spotify.api_configured(replace(cfg, spotify_id="abc")) is False
+    assert spotify.api_configured(replace(cfg, spotify_id="a", spotify_secret="b")) is True
