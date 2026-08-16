@@ -1,0 +1,16 @@
+{"props": {"pageProps": {"state": {"data": {"entity": {
+  "type": "playlist",
+  "name": "Test Playlist",
+  "coverArt": {"sources": [
+    {"height": null, "width": null, "url": "https://i.scdn.co/image/pl-nullwidth"}
+  ]},
+  "visualIdentity": {"image": [
+    {"url": "https://image-cdn.test/pl-small", "maxHeight": 64, "maxWidth": 64},
+    {"url": "https://image-cdn.test/pl-big", "maxHeight": 640, "maxWidth": 640}
+  ]},
+  "trackList": [
+    {"title": "Animal", "subtitle": "KATSEYE", "duration": 158494, "uid": "a"},
+    {"title": "Earrings", "subtitle": "Malcolm Todd", "duration": 151500, "uid": "b"},
+    {"title": "Dai Dai", "subtitle": "Shakira, Burna Boy", "duration": 223448, "uid": "c"}
+  ]
+}}}}}}

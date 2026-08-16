@@ -64,6 +64,8 @@ class Config:
     headers: dict[str, dict[str, str]] = field(default_factory=dict)
     on_complete: str = ""
     hook_timeout: int = DEFAULT_HOOK_TIMEOUT
+    spotify_id: str = ""
+    spotify_secret: str = ""
 
 
 def _positive(value, fallback: int) -> int:
@@ -215,6 +217,8 @@ def load(path: Path | None = None) -> Config:
                 for host, fields in raw.get("headers", {}).items()
             },
             on_complete=str(raw.get("hooks", {}).get("on_complete", "")),
+            spotify_id=str(raw.get("spotify", {}).get("client_id", "")),
+            spotify_secret=str(raw.get("spotify", {}).get("client_secret", "")),
             hook_timeout=(
                 parse_duration(raw["hooks"]["timeout"])
                 if "timeout" in raw.get("hooks", {})
@@ -253,6 +257,13 @@ probe_timeout = "3m"
 # How many a playlist or channel takes when you choose "newest only" rather
 # than all of it.
 newest = 100
+
+[spotify]
+# Spotify's audio is protected and never downloaded — these only read what a
+# playlist contains. Without them the public page answers, which stops at 50
+# tracks. A free app at developer.spotify.com gives both values.
+client_id     = ""
+client_secret = ""
 
 # Sent with every request to a matching host. Same host rule as [proxy.domains]:
 # a bare name covers subdomains, "*." matches subdomains only. Useful for hosts

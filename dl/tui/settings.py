@@ -192,6 +192,7 @@ SECTIONS = (
     ("General", settings.GENERAL),
     ("Limits", settings.LIMITS),
     ("YouTube", settings.YOUTUBE),
+    ("Spotify", settings.SPOTIFY),
     ("Hooks", settings.HOOKS),
 )
 LIST_ROWS = ("Proxy", "Headers", "Categories")
@@ -199,6 +200,7 @@ SECTION_ICONS = {
     "General": "⚙️",
     "Limits": "🚦",
     "YouTube": "🎬",
+    "Spotify": "🎵",
     "Hooks": "🪝",
     "Proxy": "🌐",
     "Headers": "🏷️",

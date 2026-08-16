@@ -44,15 +44,16 @@ class YouTubeSetupApp(App):
     CSS = """
     Screen { align: center middle; }
     YouTubeOptionsScreen, PickerScreen, DuplicateModal, ConfirmModal,
-    PlaylistScreen { align: center middle; }
-    #yt-box, #picker-box, #duplicate-box, #confirm-box, #playlist-box {
+    PlaylistScreen, MatchScreen { align: center middle; }
+    #yt-box, #picker-box, #duplicate-box, #confirm-box, #playlist-box, #match-box {
         width: 76; padding: 1 2; border: round $accent; background: $surface;
     }
     #confirm-box Button { width: 100%; margin-top: 1; }
-    #yt-head, #duplicate-head, #playlist-head { text-style: bold; }
-    #yt-list, #picker-list, #picker-error, #duplicate-detail, #playlist-detail { height: auto; }
+    #yt-head, #duplicate-head, #playlist-head, #match-head { text-style: bold; }
+    #yt-list, #picker-list, #picker-error, #duplicate-detail, #playlist-detail,
+    #match-list { height: auto; }
     #duplicate-box Button, #playlist-box Button { width: 100%; margin-top: 1; }
-    #add-hint, #limit-hint, #delete-hint, #duplicate-hint, #confirm-hint {
+    #add-hint, #limit-hint, #delete-hint, #duplicate-hint, #confirm-hint, #match-hint {
         height: 1; padding-top: 1; text-style: dim;
     }
     """

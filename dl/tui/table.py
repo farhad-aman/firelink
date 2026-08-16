@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual.widgets import Static
 
-from .. import checksum, clock, torrent
+from .. import checksum, clock, routing, torrent
 from ..config import Category, Config
 from ..format import (
     SPINNER,
@@ -117,7 +117,11 @@ def row_from_job(job: dict, cfg: Config) -> Row:
     done = int(job.get("done", 0) or 0)
     total = int(job.get("total", 0) or 0)
     speed = int(job.get("speed", 0) or 0)
-    category = cfg.categories.get("video") or OTHER
+    # By extension, not by "yt-dlp fetched it": an audio-only job writes an
+    # m4a to the music folder and reading every job as video badged it wrong.
+    container = (job.get("choices") or {}).get("container") or "mp4"
+    named = landed.name or job.get("outname") or f"download.{container}"
+    category = routing.resolve("", named, cfg).category
     return Row(
         gid=job.get("id", ""),
         name=name,

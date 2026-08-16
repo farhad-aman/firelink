@@ -1,0 +1,12 @@
+{"props": {"pageProps": {"state": {"data": {"entity": {
+  "type": "track",
+  "title": "Never Gonna Give You Up",
+  "name": "Never Gonna Give You Up",
+  "duration": 213573,
+  "artists": [{"name": "Rick Astley", "uri": "spotify:artist:0gxyHStUsqpMadRV0Di1Qt"}],
+  "visualIdentity": {"image": [
+    {"url": "https://image-cdn.test/small", "maxHeight": 64, "maxWidth": 64},
+    {"url": "https://image-cdn.test/mid", "maxHeight": 300, "maxWidth": 300},
+    {"url": "https://image-cdn.test/big", "maxHeight": 640, "maxWidth": 640}
+  ]}
+}}}}}}

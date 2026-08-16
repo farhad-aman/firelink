@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import checksum, cli, config, daemon, install, routing, ytdlp
+from . import checksum, cli, config, daemon, install, routing, spotify, ytdlp
 from .config import CONFIG_FILE
 from .rpc import Aria2Error, Aria2Unreachable
 from .tui.preview import Request, run_preview
@@ -16,6 +16,7 @@ dl — download manager
   dl -p <url>              download through the sing-box proxy
   dl -H "Key: Value"       extra request header (repeatable)
   dl -c sha256=<hex>       verify the download against a checksum
+  dl <spotify url>         a track, album or playlist (audio from YouTube)
   dl <magnet:…>            magnet link
   dl file.torrent          torrent file, local or over http
   --no-preview             queue and exit without attaching the live preview
@@ -108,6 +109,23 @@ def _run_youtube(cfg, urls: list[str], proxy: bool, interactive: bool) -> int:
     return 130 if cancelled else 0
 
 
+def _run_spotify(cfg, urls: list[str], interactive: bool) -> int:
+    """Spotify needs yt-dlp: the audio is fetched from YouTube, not Spotify."""
+    if not ytdlp.available():
+        print(f"dl: yt-dlp not found — run `{install.update_command()}`", file=sys.stderr)
+        return 1
+    if not interactive:
+        print("dl: Spotify downloads need a terminal to confirm matches", file=sys.stderr)
+        return 1
+
+    from .tui.spotapp import run_spotify
+
+    lines, cancelled = run_spotify(cfg, urls)
+    for line in lines:
+        print(line)
+    return 130 if cancelled else 0
+
+
 def _run(args: list[str]) -> int:
     if args and args[0] in ("-h", "--help", "help"):
         print(USAGE)
@@ -192,6 +210,14 @@ def _run(args: list[str]) -> int:
         return watch.run(cfg, client)
 
     if urls:
+        # Split before ytdlp is asked: the audio comes from YouTube, but the
+        # address that names the track is Spotify's and only this path reads it.
+        songs = [u for u in urls if spotify.is_spotify(u)]
+        urls = [u for u in urls if u not in songs]
+        if songs:
+            rc = _run_spotify(cfg, songs, preview and sys.stdout.isatty())
+            if rc or not urls:
+                return rc
         tube = [u for u in urls if ytdlp.handles(u)]
         urls = [u for u in urls if u not in tube]
         if tube:

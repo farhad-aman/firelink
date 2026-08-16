@@ -306,6 +306,53 @@ the command line keeps working through itself after you close the terminal.
 `r` and `space` ignore the cap: asking for one download back is an instruction
 about that download, not a request to join the queue.
 
+## Spotify
+
+    dl https://open.spotify.com/track/...
+    dl https://open.spotify.com/album/...
+    dl https://open.spotify.com/playlist/...
+
+**The audio comes from YouTube, not Spotify.** Spotify's own streams are
+protected and no download tool can read them — yt-dlp's extractor for these
+addresses is named `DRM` and exists only to say so. firelink reads what a
+track *is* from Spotify — title, artist, album, track number, cover — finds
+the same recording on YouTube, and writes Spotify's details onto the file. You
+get an m4a in the `audio` category with correct tags, at YouTube's quality.
+
+A single track fetched without credentials gets its title, artist and cover
+art, but no album or track number — Spotify's public page for one track does
+not carry them. An album or playlist link supplies the album name, and the
+credentials below supply everything including the track number.
+
+Matching is automatic when the length agrees to within two seconds and the
+uploader is the artist's own channel or their `- Topic` channel. Anything more
+than fifteen seconds out is refused outright — that is what keeps an advert or
+an hour-long compilation from arriving under the right name.
+
+When a match is doubtful, firelink shows you the candidates before anything
+downloads:
+
+    ↑↓ track    → other take    ⏎ accept    s skip    a accept all    esc cancel
+
+A batch where everything matched cleanly never shows this screen, so a single
+track stays one keypress. Tracks with no usable match are skipped and named in
+the summary rather than dropped quietly.
+
+### Long playlists
+
+The public Spotify page returns at most 50 tracks and does not say how many it
+held, so firelink warns you when a playlist comes back with exactly 50. To read
+longer ones, create a free app at
+[developer.spotify.com](https://developer.spotify.com) and put its two values
+in `~/.config/dl/config.toml`, or under Settings → Spotify:
+
+    [spotify]
+    client_id     = "..."
+    client_secret = "..."
+
+These only read what a playlist contains. They are not a login, and they do not
+unlock audio.
+
 ## Search
 
 `/` filters both tabs by filename. Rows that do not match are hidden, so `J`,

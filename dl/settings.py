@@ -31,6 +31,8 @@ EDITABLE = LIST_SECTIONS | {
     "newest",
     "on_complete",
     "hook_timeout",
+    "spotify_id",
+    "spotify_secret",
 }
 
 
@@ -75,6 +77,13 @@ HOOKS = (
     Field(("hooks", "timeout"), "Hook timeout", "duration"),
 )
 
+# Empty is the supported state, not a half-filled one: without both, listings
+# fall back to the public page rather than failing.
+SPOTIFY = (
+    Field(("spotify", "client_id"), "Client ID", "text", allow_empty=True),
+    Field(("spotify", "client_secret"), "Client secret", "text", allow_empty=True),
+)
+
 CATEGORY_FIELDS = (
     Field(("dir",), "Folder", "path"),
     Field(("ext",), "Extensions", "text"),
@@ -97,6 +106,8 @@ ATTRIBUTE = {
     ("youtube", "newest"): lambda cfg: cfg.newest,
     ("hooks", "on_complete"): lambda cfg: cfg.on_complete,
     ("hooks", "timeout"): lambda cfg: f"{cfg.hook_timeout}s",
+    ("spotify", "client_id"): lambda cfg: cfg.spotify_id,
+    ("spotify", "client_secret"): lambda cfg: cfg.spotify_secret,
 }
 
 

@@ -58,6 +58,11 @@ def through_proxy(url: str, cfg: Config, forced: bool = False) -> bool:
     return any(_covers(rule, host) for rule in (r.lower() for r in cfg.proxy_domains))
 
 
+def proxy_for(url: str, cfg: Config, forced: bool = False) -> str:
+    """The proxy this address goes through, or "" for a direct connection."""
+    return cfg.proxy if through_proxy(url, cfg, forced) else ""
+
+
 def _covers(rule: str, host: str) -> bool:
     if rule.startswith("*."):
         return host.endswith(rule[1:])
