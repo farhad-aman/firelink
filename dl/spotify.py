@@ -241,8 +241,16 @@ def _split(subtitle: str) -> tuple[str, ...]:
 
 
 def _cover(entity: dict) -> str:
-    sources = (entity.get("coverArt") or {}).get("sources") or []
-    if not sources:
+    """The largest artwork offered, from whichever shape holds it.
+
+    A track page carries only visualIdentity.image, a collection carries
+    coverArt.sources as well, and the width lives under a different key in
+    each — as null in the one that has it at all. Reading both and sorting on
+    whatever width is present is what keeps a 64px thumbnail out of the tags.
+    """
+    offered = (entity.get("coverArt") or {}).get("sources") or []
+    offered = list(offered) + list((entity.get("visualIdentity") or {}).get("image") or [])
+    if not offered:
         return ""
-    biggest = max(sources, key=lambda s: int(s.get("width") or 0))
+    biggest = max(offered, key=lambda s: int(s.get("width") or s.get("maxWidth") or 0))
     return str(biggest.get("url") or "")

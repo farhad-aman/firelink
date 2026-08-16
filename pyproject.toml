@@ -22,4 +22,5 @@ include = ["dl*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q -m 'not live'"
+markers = ["live: reaches the real Spotify and YouTube; run on demand"]

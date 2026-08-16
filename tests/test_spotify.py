@@ -107,8 +107,17 @@ def test_a_playlist_numbers_its_tracks_from_one():
 
 
 def test_it_takes_the_largest_cover_offered():
+    """A track page keeps its artwork under visualIdentity, and the sizes are
+    keyed maxWidth there. Reading only coverArt returned nothing at all."""
     tracks = spotify.parse_embed(embed_html("spotify_track.json"))
-    assert tracks[0].cover == "https://i.scdn.co/image/big"
+    assert tracks[0].cover == "https://image-cdn.test/big"
+
+
+def test_a_cover_width_of_null_does_not_win_over_a_real_one():
+    """Spotify sends coverArt widths as null on a playlist. Treating null as
+    a size is how a 64px thumbnail ends up embedded in every track."""
+    tracks = spotify.parse_embed(embed_html("spotify_playlist.json"))
+    assert tracks[0].cover == "https://image-cdn.test/pl-big"
 
 
 def test_a_page_without_the_data_block_is_an_error_not_an_empty_list():
