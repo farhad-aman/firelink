@@ -9,7 +9,7 @@ description = "Terminal download manager over aria2c"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-dependencies = ["textual>=0.80", "tomlkit>=0.13", "yt-dlp[default]>=2025.1.1"]
+dependencies = ["textual>=0.80", "tomlkit>=0.13", "yt-dlp[default]>=2025.1.1", "mutagen>=1.47"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
