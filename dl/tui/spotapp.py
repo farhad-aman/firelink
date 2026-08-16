@@ -11,6 +11,9 @@ from .matchscreen import MatchScreen
 from .ytflow import spawn
 
 
+SEARCH_HOST = "https://www.youtube.com/"
+
+
 def music_dir(cfg: Config) -> Path:
     """Where an m4a lands. Routing decides by extension, so the name only has
     to carry the suffix for the audio category to claim it."""
@@ -67,7 +70,10 @@ class SpotifySetupApp(App):
         matches = await asyncio.to_thread(
             spotresolve.resolve,
             listing.tracks,
-            proxy=self.cfg.proxy,
+            # The search is a YouTube request, so it follows YouTube's rule
+            # rather than Spotify's — and the proxy list decides, not the fact
+            # that a proxy is configured.
+            proxy=routing.proxy_for(SEARCH_HOST, self.cfg),
             cookies_from=self.cfg.cookies_from,
             progress=progress,
         )

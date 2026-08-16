@@ -6,6 +6,9 @@ import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlencode, urlsplit
 
+from . import routing
+from .net import open_url
+
 API = "https://api.spotify.com/v1"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 PAGE = 100
@@ -170,6 +173,10 @@ def tracks_from_items(items) -> list[Track]:
     return found
 
 
+def _proxy(url: str, cfg) -> str:
+    return routing.proxy_for(url, cfg) if cfg is not None else ""
+
+
 def _token(cfg, timeout: float) -> str:
     pair = f"{cfg.spotify_id}:{cfg.spotify_secret}".encode()
     request = urllib.request.Request(
@@ -177,26 +184,27 @@ def _token(cfg, timeout: float) -> str:
         data=urlencode({"grant_type": "client_credentials"}).encode(),
         headers={"Authorization": f"Basic {base64.b64encode(pair).decode()}"},
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with open_url(request, timeout, _proxy(TOKEN_URL, cfg)) as response:
         return str(json.loads(response.read().decode())["access_token"])
 
 
-def _get(url: str, token: str, timeout: float) -> dict:
+def _get(url: str, token: str, timeout: float, proxy: str = "") -> dict:
     request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with open_url(request, timeout, proxy) as response:
         return json.loads(response.read().decode())
 
 
 def api_tracks(kind: str, spotify_id: str, cfg, timeout: float = 25) -> list[Track]:
     """Every track, following the pages until there are none left."""
     token = _token(cfg, timeout)
+    proxy = _proxy(API, cfg)
     if kind == "track":
-        return [track_from_api(_get(f"{API}/tracks/{spotify_id}", token, timeout))]
+        return [track_from_api(_get(f"{API}/tracks/{spotify_id}", token, timeout, proxy))]
     where = "playlists" if kind == "playlist" else "albums"
     url = f"{API}/{where}/{spotify_id}/tracks?{urlencode({'limit': PAGE})}"
     items = []
     while url:
-        page = _get(url, token, timeout)
+        page = _get(url, token, timeout, proxy)
         items.extend(page.get("items") or [])
         url = page.get("next")
     return tracks_from_items(items)
@@ -220,11 +228,10 @@ def fetch(url: str, cfg=None, timeout: float = 25) -> Listing:
             # A typo in the config must not make every Spotify link stop
             # working when the public page would have answered.
             pass
-    request = urllib.request.Request(
-        f"{EMBED}/{kind}/{spotify_id}", headers={"User-Agent": AGENT}
-    )
+    page = f"{EMBED}/{kind}/{spotify_id}"
+    request = urllib.request.Request(page, headers={"User-Agent": AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with open_url(request, timeout, _proxy(page, cfg)) as response:
             html = response.read().decode("utf-8", "replace")
     except (urllib.error.URLError, OSError, ValueError) as exc:
         raise SpotifyUnreadable(str(exc)) from None

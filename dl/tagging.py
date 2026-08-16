@@ -2,16 +2,18 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from .net import open_url
+
 COVER_AGENT = "Mozilla/5.0"
 
 
-def fetch_cover(url: str, timeout: float = 20) -> bytes:
+def fetch_cover(url: str, timeout: float = 20, proxy: str = "") -> bytes:
     """The cover image, or nothing. Never raises: art is not worth a failure."""
     if not url:
         return b""
     request = urllib.request.Request(url, headers={"User-Agent": COVER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with open_url(request, timeout, proxy) as response:
             return response.read()
     except (urllib.error.URLError, OSError, ValueError):
         return b""

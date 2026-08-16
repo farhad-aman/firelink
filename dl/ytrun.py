@@ -7,7 +7,7 @@ import time
 from collections import deque
 from pathlib import Path
 
-from . import history, ytjob, ytqueue
+from . import history, spotflow, ytjob, ytqueue
 from .config import load
 from .hook import after_complete, notify
 
@@ -153,6 +153,9 @@ def finalize(state: Path, job: dict, code: int, cfg) -> dict:
             return _update(state, job, status="error", error=problem)
 
     landed = ytjob.produced_file(state, job)
+    # Spotify jobs fetch their audio from YouTube, so the details that make the
+    # file findable in a library are the ones the job brought with it.
+    spotflow.apply_tags(landed, job, cfg)
     job = _update(
         state,
         job,

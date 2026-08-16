@@ -294,3 +294,48 @@ def test_credentials_the_api_rejects_fall_back_to_the_public_page(monkeypatch):
     cfg = replace(config.defaults(), spotify_id="bad", spotify_secret="bad")
     listing = spotify.fetch("https://open.spotify.com/playlist/p1", cfg=cfg)
     assert len(listing.tracks) == 3
+
+
+def test_a_listed_spotify_host_is_fetched_through_the_proxy(monkeypatch):
+    """Without this the proxy entries are decorative: fetch used urlopen
+    directly and never saw the config at all."""
+    seen = {}
+
+    class Opener:
+        def open(self, request, timeout=0):
+            return Fake(embed_html("spotify_track.json"))
+
+    def fake_build(handler):
+        seen["proxies"] = handler.proxies
+        return Opener()
+
+    monkeypatch.setattr(spotify.urllib.request, "build_opener", fake_build)
+    cfg = replace(config.defaults(), proxy_domains=("spotify.com",))
+    listing = spotify.fetch("https://open.spotify.com/track/abc", cfg=cfg)
+    assert listing.kind == "track"
+    assert seen["proxies"]["https"] == cfg.proxy
+
+
+def test_an_unlisted_spotify_host_connects_directly(monkeypatch):
+    monkeypatch.setattr(
+        spotify.urllib.request,
+        "build_opener",
+        lambda handler: pytest.fail("built a proxy opener for an unlisted host"),
+    )
+    monkeypatch.setattr(
+        spotify.urllib.request,
+        "urlopen",
+        lambda r, timeout=0: Fake(embed_html("spotify_track.json")),
+    )
+    cfg = replace(config.defaults(), proxy_domains=())
+    assert spotify.fetch("https://open.spotify.com/track/abc", cfg=cfg).kind == "track"
+
+
+def test_no_config_at_all_still_connects_directly(monkeypatch):
+    """fetch is called without a cfg in places that have none."""
+    monkeypatch.setattr(
+        spotify.urllib.request,
+        "urlopen",
+        lambda r, timeout=0: Fake(embed_html("spotify_track.json")),
+    )
+    assert spotify.fetch("https://open.spotify.com/track/abc").kind == "track"

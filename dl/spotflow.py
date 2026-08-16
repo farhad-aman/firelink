@@ -1,10 +1,51 @@
 from pathlib import Path
 
-from . import ytjob
+from . import routing, tagging, ytjob
+from .spotify import Track
 from .theme import glyph
 from .youtube import Choices
 
 AUDIO = Choices(video="none", audio="best", subs="off", sub_lang="en", container="m4a")
+
+# Where a job carries the Spotify metadata its file should end up wearing.
+# The job is written to JSON between processes, so this holds plain values
+# rather than the Track it came from.
+DETAILS = "spotify"
+
+
+def details_of(track: Track) -> dict:
+    return {
+        "title": track.title,
+        "artists": list(track.artists),
+        "album": track.album,
+        "number": track.number,
+        "cover": track.cover,
+    }
+
+
+def track_from_details(details: dict) -> Track:
+    return Track(
+        title=str(details.get("title") or ""),
+        artists=tuple(details.get("artists") or ()),
+        duration=0,
+        album=str(details.get("album") or ""),
+        number=int(details.get("number") or 0),
+        cover=str(details.get("cover") or ""),
+    )
+
+
+def apply_tags(landed: Path | None, job: dict, cfg) -> bool:
+    """Write Spotify's details onto a finished file.
+
+    Runs after the download for every job that carried any, and answers False
+    for the ones that did not rather than making the caller check first.
+    """
+    details = job.get(DETAILS)
+    if not details or landed is None:
+        return False
+    track = track_from_details(details)
+    cover = tagging.fetch_cover(track.cover, proxy=routing.proxy_for(track.cover, cfg))
+    return tagging.apply(landed, track, cover)
 
 
 def needs_review(matches) -> list:
@@ -30,6 +71,7 @@ def jobs_for(matches, cfg, directory: Path) -> list[dict]:
         )
         job["outname"] = match.track.filename
         job["title"] = f"{match.track.artist} — {match.track.title}"
+        job[DETAILS] = details_of(match.track)
         jobs.append(job)
     return jobs
 

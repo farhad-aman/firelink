@@ -205,3 +205,17 @@ def test_header_lines_are_formatted_the_way_aria2_wants():
 
 def test_header_lines_of_nothing_is_empty():
     assert routing.header_lines({}) == []
+
+
+def test_proxy_for_gives_the_url_only_when_the_host_is_listed():
+    """The proxy list decides, not the fact that a proxy is configured.
+    Returning cfg.proxy unconditionally sends every request through it."""
+    cfg = proxied_cfg("spotify.com")
+    assert routing.proxy_for("https://open.spotify.com/track/x", cfg) == cfg.proxy
+    assert routing.proxy_for("https://api.spotify.com/v1/tracks/x", cfg) == cfg.proxy
+    assert routing.proxy_for("https://example.test/a.iso", cfg) == ""
+
+
+def test_proxy_for_honours_the_forced_flag():
+    cfg = proxied_cfg()
+    assert routing.proxy_for("https://example.test/a.iso", cfg, True) == cfg.proxy
