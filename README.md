@@ -319,6 +319,11 @@ track *is* from Spotify — title, artist, album, track number, cover — finds
 the same recording on YouTube, and writes Spotify's details onto the file. You
 get an m4a in the `audio` category with correct tags, at YouTube's quality.
 
+A single track fetched without credentials gets its title, artist and cover
+art, but no album or track number — Spotify's public page for one track does
+not carry them. An album or playlist link supplies the album name, and the
+credentials below supply everything including the track number.
+
 Matching is automatic when the length agrees to within two seconds and the
 uploader is the artist's own channel or their `- Topic` channel. Anything more
 than fifteen seconds out is refused outright — that is what keeps an advert or
