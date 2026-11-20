@@ -30,9 +30,12 @@ firelink — download manager
   firelink kill                  stop the daemon
   firelink kill --strays         find daemons older versions left behind
   firelink doctor                check the tools, config, proxy and daemon
+  firelink completion <shell>    print a zsh, bash or fish completion script
 """
 
-SUBCOMMANDS = {"ls", "history", "pause", "resume", "rm", "watch", "kill", "doctor", "help"}
+SUBCOMMANDS = {
+    "ls", "history", "pause", "resume", "rm", "watch", "kill", "doctor", "completion", "help"
+}
 
 # Flags each subcommand understands. Anything else is a mistake worth saying so
 # about rather than dropping: `firelink ls --failed` used to filter nothing, quietly.
@@ -130,6 +133,17 @@ def _run_spotify(cfg, urls: list[str], interactive: bool) -> int:
 def _run(args: list[str]) -> int:
     if args and args[0] in ("-h", "--help", "help"):
         print(USAGE)
+        return 0
+
+    if args and args[0] == "completion":
+        # Before the config and the folders: Homebrew runs this at build time.
+        from . import completion
+
+        shell = args[1] if len(args) > 1 else ""
+        if shell not in completion.SHELLS:
+            print("firelink: completion takes zsh, bash or fish", file=sys.stderr)
+            return 1
+        print(completion.script(shell), end="")
         return 0
 
     if args and args[0] == "--version":
