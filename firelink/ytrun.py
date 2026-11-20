@@ -106,8 +106,10 @@ def burn_in(state: Path, job: dict) -> str:
     """Render the subtitle track into the picture, replacing the original."""
     directory = Path(job["dir"])
     video = ytjob.produced_file(state, job)
-    subtitles = ytjob.subtitle_for(directory, ytjob.choices_of(job).sub_lang)
-    if video is None or subtitles is None:
+    if video is None:
+        return "no subtitle track to burn in"
+    subtitles = ytjob.subtitle_for(directory, ytjob.choices_of(job).sub_lang, video)
+    if subtitles is None:
         return "no subtitle track to burn in"
     if not ytjob.burn_in_available():
         return (

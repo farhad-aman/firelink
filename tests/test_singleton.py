@@ -1,3 +1,4 @@
+import time
 """One daemon, one dashboard.
 
 Roaming to a free port when the preferred one was busy is how stray daemons
@@ -157,6 +158,8 @@ def cfg_and_state(sandbox_cfg, tmp_path, monkeypatch):
 def test_a_daemon_that_answers_is_adopted(cfg_and_state, monkeypatch):
     cfg, state = cfg_and_state
     monkeypatch.setattr(daemon, "_probe", lambda port, secret: "ours")
+    current = daemon.aria2_args(cfg, state, daemon.PORT, daemon.read_secret(state))
+    daemon.write_signature(state, daemon.args_signature(current))
     spawned = []
     monkeypatch.setattr(daemon, "_spawn", lambda *a: spawned.append(a))
     client = daemon.ensure_running(cfg, state)
@@ -171,6 +174,7 @@ def test_a_stale_daemon_of_ours_is_stopped_before_starting_a_new_one(
     cfg, state = cfg_and_state
     daemon.write_pid(state, 4321)
     monkeypatch.setattr(daemon, "alive", lambda pid: pid == 4321)
+    monkeypatch.setattr(daemon, "aria2_processes", lambda: [(4321, daemon.PORT)])
     monkeypatch.setattr(daemon, "_probe", lambda port, secret: "free")
     monkeypatch.setattr(daemon, "_bindable", lambda port: True)
     stopped = []
@@ -268,3 +272,71 @@ def test_starting_records_the_pid(cfg_and_state, monkeypatch):
     monkeypatch.setattr(daemon, "_await_rpc", lambda *a: True)
     daemon.ensure_running(cfg, state)
     assert daemon.read_pid(state) == 777
+
+
+class _StaleClient:
+    def __init__(self):
+        self.shut = 0
+
+    def tell_active(self):
+        return []
+
+    def tell_waiting(self):
+        return []
+
+    def shutdown(self):
+        self.shut += 1
+        return "OK"
+
+
+def test_a_stale_daemon_with_no_pid_file_is_asked_to_stop_not_signalled(tmp_path, sandbox_cfg, monkeypatch):
+    """read_pid answers 0 for a missing file, and kill(0) signals this
+    process's own group rather than the daemon."""
+    signalled = []
+    monkeypatch.setattr(daemon.os, "kill", lambda pid, sig: signalled.append(pid))
+    client = _StaleClient()
+    assert daemon.stop_if_stale(sandbox_cfg, tmp_path, "secret", client) is True
+    assert client.shut == 1
+    assert 0 not in signalled
+
+
+def test_terminate_never_signals_pid_zero_or_below(monkeypatch):
+    signalled = []
+    monkeypatch.setattr(daemon.os, "kill", lambda pid, sig: signalled.append(pid))
+    daemon._terminate(0)
+    daemon._terminate(-1)
+    assert signalled == []
+
+
+def test_a_recorded_pid_that_is_no_longer_aria2_is_left_alone(cfg_and_state, monkeypatch):
+    """After a reboot the pid in daemon.pid can belong to any program."""
+    cfg, state = cfg_and_state
+    daemon.write_pid(state, 4321)
+    monkeypatch.setattr(daemon, "alive", lambda pid: True)
+    monkeypatch.setattr(daemon, "aria2_processes", lambda: [(999, daemon.PORT)])
+    monkeypatch.setattr(daemon, "_probe", lambda port, secret: "free")
+    monkeypatch.setattr(daemon, "_bindable", lambda port: True)
+    stopped = []
+    monkeypatch.setattr(daemon, "_terminate", lambda pid: stopped.append(pid))
+    monkeypatch.setattr(daemon, "_spawn", lambda *a: None)
+    monkeypatch.setattr(daemon, "_await_rpc", lambda *a: True)
+    daemon.ensure_running(cfg, state)
+    assert stopped == []
+
+
+def test_many_starting_at_once_let_exactly_one_in(tmp_path):
+    import subprocess
+    import sys
+
+    go = time.time() + 1.0
+    code = (
+        "import os, sys, time; from pathlib import Path; from firelink import instance; "
+        "time.sleep(max(float(sys.argv[2]) - time.time(), 0)); "
+        "print(instance.acquire(Path(sys.argv[1]))); time.sleep(1.5)"
+    )
+    procs = [
+        subprocess.Popen([sys.executable, "-c", code, str(tmp_path), str(go)], stdout=subprocess.PIPE, text=True)
+        for _ in range(8)
+    ]
+    answers = [p.communicate(timeout=20)[0].strip() for p in procs]
+    assert answers.count("True") == 1

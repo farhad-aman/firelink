@@ -1,4 +1,5 @@
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -7,7 +8,7 @@ from pathlib import Path
 
 from . import checksum, config, daemon, history, routing, torrent
 from .config import STATE_DIR, Config
-from .rpc import Aria2
+from .rpc import Aria2, Aria2Error, Aria2Unreachable
 
 
 def _first_file(status: dict) -> dict:
@@ -145,7 +146,8 @@ def relocate(path: Path, cfg: Config, url: str) -> Path:
         while destination.exists():
             destination = target_dir / f"{stem}.{n}{suffix}"
             n += 1
-    path.replace(destination)
+    # Across volumes a rename fails with EXDEV; move copies then deletes.
+    shutil.move(path, destination)
     return destination
 
 
@@ -238,7 +240,8 @@ def _run_idle(generation: int, delay: int, state: Path) -> int:
         client = Aria2("127.0.0.1", daemon.read_port(state), daemon.read_secret(state), timeout=2.0)
         if not client.tell_active() and not client.tell_waiting():
             client.shutdown()
-    except Exception:
+            daemon.clear_pid(state)
+    except (Aria2Error, Aria2Unreachable):
         pass
     return 0
 
@@ -249,8 +252,8 @@ def _log(state: Path, message: str) -> None:
         fh.write(f"--- {time.ctime()}\n{message}\n")
 
 
-def _log_failure(state: Path) -> None:
-    _log(state, traceback.format_exc())
+def _log_failure(state: Path, mode: str, gid: str) -> None:
+    _log(state, f"{mode} hook for gid {gid}\n{traceback.format_exc()}")
 
 
 def _take(args: list[str], flag: str) -> str:
@@ -279,10 +282,10 @@ def main(argv: list[str] | None = None) -> int:
     where = _take(args, "--state")
     config_file = _take(args, "--config")
     state = Path(where) if where else STATE_DIR
+    mode = args[0]
+    gid = args[1] if len(args) > 1 else ""
 
     try:
-        mode = args[0]
-        gid = args[1] if len(args) > 1 else ""
         cfg = config.load(Path(config_file)) if config_file else config.load()
         # Talk to the daemon that called us, which is the one this state
         # directory records. ensure_running would go to the fixed port and
@@ -306,7 +309,11 @@ def main(argv: list[str] | None = None) -> int:
             original = Path(record["path"])
             drop_control_file(original)
             drop_source_torrent(client, status)
-            final = final_path(original, cfg, record["url"], status)
+            try:
+                final = final_path(original, cfg, record["url"], status)
+            except OSError as exc:
+                _log(state, f"could not move {original} into its category folder: {exc}")
+                final = original
             drop_control_file(final)
             record["path"] = str(final)
         history.append(record, state / "history.jsonl")
@@ -317,7 +324,7 @@ def main(argv: list[str] | None = None) -> int:
             after_complete(cfg, record, state)
         arm_idle_shutdown(client, cfg, state)
     except Exception:
-        _log_failure(state)
+        _log_failure(state, mode, gid)
     return 0
 
 

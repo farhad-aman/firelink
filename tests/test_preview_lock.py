@@ -121,3 +121,31 @@ def test_the_youtube_flow_gives_the_lock_back_after_a_crash(cfg, tmp_path, monke
     with pytest.raises(RuntimeError):
         ytflow.run_youtube(cfg, ["https://youtu.be/abc"], state=tmp_path)
     assert instance.holder(tmp_path) == 0
+
+
+def test_a_url_not_yet_queued_is_queued_when_a_dashboard_is_open(cfg, tmp_path, monkeypatch, other_pid):
+    """`firelink <url>` hands the preview a URL it has not sent to aria2 yet.
+    Standing down without sending it printed "queued" and lost the download."""
+    instance.acquire(tmp_path, pid=other_pid)
+    sent = []
+    monkeypatch.setattr(preview_module, "PreviewApp", lambda *a: pytest.fail("opened a preview"))
+
+    def queue(chosen, decisions=None):
+        sent.append((list(chosen), decisions))
+        return ["gid1"]
+
+    lines, cancelled = preview_module.run_preview(
+        cfg, FakeClient(), pending=["request"], queue=queue, state=tmp_path
+    )
+    assert sent == [([], None)]
+    assert cancelled is False
+    assert "open firelink window" in lines[0]
+
+
+def test_a_url_that_could_not_be_queued_is_not_reported_as_queued(cfg, tmp_path, monkeypatch, other_pid):
+    instance.acquire(tmp_path, pid=other_pid)
+    lines, _cancelled = preview_module.run_preview(
+        cfg, FakeClient(), pending=["request"], queue=lambda chosen, decisions=None: [], state=tmp_path
+    )
+    assert "nothing queued" in lines[0]
+    assert "open firelink window" not in lines[0]

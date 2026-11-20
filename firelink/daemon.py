@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import config as config_module
 from .config import STATE_DIR, Config
+from .filelock import held
 from .rpc import Aria2, Aria2Error, Aria2Unreachable
 
 # One port, fixed. Roaming to the next free port when this one was busy is how
@@ -104,6 +105,10 @@ def alive(pid: int) -> bool:
 
 def _terminate(pid: int, wait: float = 5.0) -> None:
     """Stop a daemon of ours that no longer answers its own secret."""
+    # read_pid answers 0 for a missing file, and kill(0) would signal this
+    # process's own group.
+    if pid <= 0:
+        return
     try:
         os.kill(pid, signal.SIGTERM)
     except OSError:
@@ -238,6 +243,7 @@ def _wait_bindable(port: int, timeout: float) -> bool:
             return True
         if time.monotonic() >= deadline:
             return False
+        time.sleep(0.05)
         time.sleep(0.1)
 
 
@@ -276,9 +282,9 @@ def stop_if_stale(cfg: Config, state: Path, secret: str, client) -> bool:
     try:
         if client.tell_active() or client.tell_waiting():
             return False
+        client.shutdown()
     except (Aria2Error, Aria2Unreachable):
         return False
-    _terminate(read_pid(state))
     clear_pid(state)
     return True
 
@@ -332,6 +338,12 @@ def aria2_processes() -> list[tuple[int, int]]:
         except ValueError:
             continue
     return found
+
+
+def runs_aria2(pid: int) -> bool:
+    """Whether pid is still an aria2 daemon. A pid file outlives its process,
+    and after a reboot the number can belong to any program."""
+    return pid > 0 and any(found == pid for found, _port in aria2_processes())
 
 
 def strays(state: Path) -> list[tuple[int, int]]:
@@ -393,10 +405,31 @@ def _retire_wanderer(state: Path, secret: str) -> None:
 
 
 def ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
+    client = _ensure_running(cfg, state)
+
+    def revive() -> tuple[int, str]:
+        try:
+            fresh = _ensure_running(cfg, state)
+        except (Aria2Missing, DaemonStartFailed) as exc:
+            raise Aria2Unreachable(str(exc)) from exc
+        return fresh.port, fresh.secret
+
+    client.revive = revive
+    return client
+
+
+def _ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
     if shutil.which("aria2c") is None:
         raise Aria2Missing("aria2c not found — brew install aria2")
 
     state = STATE_DIR if state is None else state
+    # Two starting together both found the port free and both spawned; the
+    # loser's pid then overwrote the winner's.
+    with held(state / "daemon.lock"):
+        return _adopt_or_spawn(cfg, state)
+
+
+def _adopt_or_spawn(cfg: Config, state: Path) -> Aria2:
     secret = read_secret(state)
 
     if _probe(PORT, secret) == "ours":
@@ -411,9 +444,9 @@ def ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
     # holding a secret it no longer shares. Nothing can reach it, so it goes
     # rather than being left to hold the port and its downloads unseen.
     stale = read_pid(state)
-    if alive(stale):
+    if alive(stale) and runs_aria2(stale):
         _terminate(stale)
-        clear_pid(state)
+    clear_pid(state)
 
     # A daemon just asked to stop keeps its listening socket for a moment, so
     # "cannot bind" right now does not mean the port belongs to someone else.

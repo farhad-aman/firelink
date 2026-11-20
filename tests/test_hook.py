@@ -458,3 +458,87 @@ def test_a_real_torrent_is_recorded():
 
 def test_a_plain_download_is_recorded():
     assert hook.skip_record({"files": [{"path": "/tmp/a.iso"}]}) is False
+
+
+class _IdleDaemon:
+    def __init__(self, active=(), waiting=()):
+        self.active, self.waiting, self.shut = list(active), list(waiting), 0
+
+    def tell_active(self):
+        return self.active
+
+    def tell_waiting(self):
+        return self.waiting
+
+    def shutdown(self):
+        self.shut += 1
+
+
+def _idle_with(monkeypatch, tmp_path, fake, generation):
+    from firelink import daemon, hook
+
+    monkeypatch.setattr(hook.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(hook, "Aria2", lambda *a, **k: fake)
+    daemon.write_pid(tmp_path, 4242)
+    daemon.bump_generation(tmp_path)
+    return hook._run_idle(generation, 600, tmp_path)
+
+
+def test_an_idle_daemon_is_shut_down_and_its_pid_forgotten(tmp_path, monkeypatch):
+    from firelink import daemon
+
+    fake = _IdleDaemon()
+    assert _idle_with(monkeypatch, tmp_path, fake, generation=1) == 0
+    assert fake.shut == 1
+    assert daemon.read_pid(tmp_path) == 0
+
+
+def test_a_newer_generation_stands_the_sleeper_down(tmp_path, monkeypatch):
+    fake = _IdleDaemon()
+    _idle_with(monkeypatch, tmp_path, fake, generation=0)
+    assert fake.shut == 0
+
+
+def test_a_daemon_with_work_is_not_shut_down(tmp_path, monkeypatch):
+    fake = _IdleDaemon(waiting=[{"gid": "g1"}])
+    _idle_with(monkeypatch, tmp_path, fake, generation=1)
+    assert fake.shut == 0
+
+
+def test_a_move_that_fails_still_records_the_download_where_it_is(tmp_path, cfg, monkeypatch):
+    """A category folder on another volume made Path.replace raise EXDEV, and
+    the catch-all swallowed the history row, the notification and on_complete."""
+    import errno
+
+    monkeypatch.setattr(hook, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(hook.config, "load", lambda *a, **k: cfg)
+    monkeypatch.setattr(hook, "notify", lambda *a: None)
+    monkeypatch.setattr(hook, "arm_idle_shutdown", lambda *a: False)
+
+    def cross_device(*_a):
+        raise OSError(errno.EXDEV, "Cross-device link")
+
+    monkeypatch.setattr(hook, "final_path", cross_device)
+    client = FakeClient()
+    client.tell_status = lambda gid: status()
+    monkeypatch.setattr(hook, "Aria2", lambda *a, **k: client)
+
+    assert hook.main(["complete", "g1", "1", "/tmp/a.iso"]) == 0
+    rows = [json.loads(line) for line in (tmp_path / "history.jsonl").read_text().splitlines()]
+    assert rows[0]["name"] == "a.iso"
+    assert rows[0]["path"] == "/tmp/a.iso"
+    assert "Cross-device" in (tmp_path / "hook.log").read_text()
+
+
+def test_relocating_uses_a_move_that_crosses_volumes(tmp_path, cfg, monkeypatch):
+    moved = []
+    monkeypatch.setattr(hook.shutil, "move", lambda src, dst: moved.append((src, dst)) or dst)
+    source = tmp_path / "file.mp4"
+    source.write_text("x")
+    monkeypatch.setattr(
+        hook.routing,
+        "resolve",
+        lambda url, name, cfg: type("R", (), {"path": tmp_path if name != "file.mp4" else tmp_path / "video"})(),
+    )
+    hook.relocate(source, cfg, "https://h/download")
+    assert moved and moved[0][1] == tmp_path / "video" / "file.mp4"

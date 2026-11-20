@@ -64,6 +64,7 @@ def test_the_old_daemon_is_stopped_before_its_folder_moves(dirs, monkeypatch, ot
     from the moved folder instead of the old one writing to a path that is gone."""
     _seed(dirs)
     daemon.write_pid(dirs["legacy_state"], other_pid)
+    monkeypatch.setattr(daemon, "aria2_processes", lambda: [(other_pid, daemon.PORT)])
     stopped = []
     monkeypatch.setattr(
         daemon,
@@ -73,3 +74,12 @@ def test_the_old_daemon_is_stopped_before_its_folder_moves(dirs, monkeypatch, ot
     legacy.adopt(**dirs)
     assert stopped == [(other_pid, True)]
     assert daemon.read_pid(dirs["state_dir"]) == 0
+
+
+def test_a_recorded_pid_that_is_not_aria2_is_not_signalled(dirs, monkeypatch, other_pid):
+    _seed(dirs)
+    daemon.write_pid(dirs["legacy_state"], other_pid)
+    monkeypatch.setattr(daemon, "aria2_processes", lambda: [])
+    monkeypatch.setattr(daemon, "_terminate", lambda pid: pytest.fail("signalled a stranger"))
+    legacy.adopt(**dirs)
+    assert (dirs["state_dir"] / "history.jsonl").exists()

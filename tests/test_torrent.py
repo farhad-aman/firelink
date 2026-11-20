@@ -292,7 +292,6 @@ def test_a_daemon_started_before_a_setting_existed_is_stopped(tmp_path, monkeypa
     daemon.write_signature(tmp_path, "from-an-older-dl")
     daemon.write_pid(tmp_path, 4242)
     stopped = []
-    monkeypatch.setattr(daemon, "_terminate", lambda pid, wait=5.0: stopped.append(pid))
 
     class Idle:
         def tell_active(self):
@@ -301,8 +300,11 @@ def test_a_daemon_started_before_a_setting_existed_is_stopped(tmp_path, monkeypa
         def tell_waiting(self):
             return []
 
+        def shutdown(self):
+            stopped.append("rpc")
+
     assert daemon.stop_if_stale(config.defaults(), tmp_path, "s", Idle()) is True
-    assert stopped == [4242]
+    assert stopped == ["rpc"]
     assert daemon.read_pid(tmp_path) == 0
 
 
@@ -373,6 +375,9 @@ def test_a_restart_that_cannot_bind_is_an_error_not_a_dead_client(tmp_path, monk
 
         def tell_waiting(self):
             return []
+
+        def shutdown(self):
+            return "OK"
 
     monkeypatch.setattr(daemon, "Aria2", lambda *a, **k: Idle())
     with pytest.raises(daemon.DaemonStartFailed):

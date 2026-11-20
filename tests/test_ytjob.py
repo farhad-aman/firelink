@@ -409,3 +409,23 @@ def test_sweeping_leaves_fragments_belonging_to_a_live_job(tmp_path):
     scratch.mkdir(parents=True)
     ytjob.sweep(tmp_path)
     assert scratch.exists()
+
+
+def test_a_subtitle_track_is_only_the_one_named_after_its_video(tmp_path):
+    """Playlist jobs share a folder. Taking any track there burned another
+    video's subtitles in and then deleted them."""
+    video = tmp_path / "Second.mp4"
+    (tmp_path / "First.en.vtt").write_text("x")
+    (tmp_path / "Movie.srt").write_text("x")
+    assert ytjob.subtitle_for(tmp_path, "en", video) is None
+    own = tmp_path / "Second.en.vtt"
+    own.write_text("x")
+    assert ytjob.subtitle_for(tmp_path, "en", video) == own
+
+
+def test_the_requested_language_wins_among_the_videos_own_tracks(tmp_path):
+    video = tmp_path / "Talk.mkv"
+    (tmp_path / "Talk.de.vtt").write_text("x")
+    wanted = tmp_path / "Talk.en.srt"
+    wanted.write_text("x")
+    assert ytjob.subtitle_for(tmp_path, "en", video) == wanted

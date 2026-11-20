@@ -1,8 +1,18 @@
 import itertools
 import json
+import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
+
+# The daemon is on 127.0.0.1. Following http_proxy from the environment would
+# send every call, secret included, to the proxy whenever no_proxy misses it.
+_DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+# How long a failed revive is trusted before the next call may try again. A
+# start that fails takes seconds, and the dashboard calls twice a second.
+REVIVE_PAUSE = 5.0
 
 
 class Aria2Error(Exception):
@@ -54,12 +64,39 @@ class Aria2:
         # and addUri is the only moment the gid and the clock are both in hand.
         self.state = state
         self._ids = itertools.count(1)
+        # Starts the daemon again and says where it now listens. Set only on
+        # clients that may start one: a hook must never.
+        self.revive: Callable[[], tuple[int, str]] | None = None
+        self._revive_failed_at = -REVIVE_PAUSE
 
     @property
     def url(self) -> str:
         return f"http://{self.host}:{self.port}/jsonrpc"
 
     def _call(self, method: str, *params):
+        try:
+            return self._send(method, *params)
+        except Aria2Unreachable:
+            if not self._revived():
+                raise
+        return self._send(method, *params)
+
+    def _revived(self) -> bool:
+        """The idle shutdown stops the daemon under a dashboard or watcher
+        that stays open. Bring it back once rather than failing every call
+        until the user restarts firelink."""
+        if self.revive is None:
+            return False
+        if time.monotonic() - self._revive_failed_at < REVIVE_PAUSE:
+            return False
+        try:
+            self.port, self.secret = self.revive()
+        except Aria2Unreachable:
+            self._revive_failed_at = time.monotonic()
+            return False
+        return True
+
+    def _send(self, method: str, *params):
         payload = {
             "jsonrpc": "2.0",
             "id": f"firelink-{next(self._ids)}",
@@ -72,7 +109,7 @@ class Aria2:
             headers={"Content-Type": "application/json"},
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with _DIRECT.open(request, timeout=self.timeout) as response:
                 body = json.loads(response.read())
         except urllib.error.HTTPError as exc:
             # aria2 refuses a call with 400 and a JSON-RPC error body. Judging by

@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from . import search
+from .filelock import beside, held
 
 _BLOCK = 8192
 
@@ -10,7 +11,7 @@ _BLOCK = 8192
 def append(record: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(record, ensure_ascii=False) + "\n"
-    with open(path, "a", encoding="utf-8") as fh:
+    with held(beside(path)), open(path, "a", encoding="utf-8") as fh:
         fh.write(line)
         fh.flush()
         os.fsync(fh.fileno())
@@ -27,7 +28,11 @@ def key(record: dict) -> tuple:
 def remove_entry(path: Path, record: dict) -> bool:
     if not path.exists():
         return False
-    target = key(record)
+    with held(beside(path)):
+        return _remove(path, key(record))
+
+
+def _remove(path: Path, target: tuple) -> bool:
     kept: list[str] = []
     removed = False
     for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():

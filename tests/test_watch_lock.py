@@ -107,3 +107,12 @@ def test_stopping_with_ctrl_c_still_releases(cfg, tmp_path):
         cfg, Client(), interval=0, reader=interrupt, iterations=1, state=tmp_path
     ) == 0
     assert instance.holder(tmp_path) == 0
+
+
+def test_a_watcher_refused_without_an_explicit_state_names_the_holder(cfg, tmp_path, monkeypatch, capsys, other_pid):
+    """`firelink watch` passes no state. The refusal read the lock from None
+    and crashed with a TypeError instead of naming the open dashboard."""
+    monkeypatch.setattr(watch, "STATE_DIR", tmp_path)
+    instance.acquire(tmp_path, pid=other_pid)
+    assert watch.run(cfg, Client(), interval=0, reader=lambda: "", iterations=1) == 1
+    assert f"pid {other_pid}" in capsys.readouterr().err

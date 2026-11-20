@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 from .daemon import alive
+from .filelock import beside, held
 
 LOCK = "firelink.lock"
 
@@ -32,6 +33,14 @@ def acquire(state: Path, pid: int | None = None) -> bool:
     mine = os.getpid() if pid is None else pid
     state.mkdir(parents=True, exist_ok=True)
     target = state / LOCK
+    # Between one starter's create and its pid write, another read an empty
+    # lock as abandoned and took it; two taking over one stale lock could
+    # both win. Deciding under a kernel lock leaves no such gap.
+    with held(beside(target)):
+        return _claim(state, target, mine)
+
+
+def _claim(state: Path, target: Path, mine: int) -> bool:
     while True:
         try:
             handle = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)

@@ -20,7 +20,7 @@ def adopt(legacy_config: Path, legacy_state: Path, config_dir: Path, state_dir: 
                 f"an old `dl` window is open (pid {running}) — close it, then run firelink again"
             )
         old_daemon = daemon.read_pid(legacy_state)
-        if daemon.alive(old_daemon):
+        if daemon.alive(old_daemon) and daemon.runs_aria2(old_daemon):
             daemon._terminate(old_daemon)
         daemon.clear_pid(legacy_state)
         _move(legacy_state, state_dir)

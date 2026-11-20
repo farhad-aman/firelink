@@ -150,7 +150,7 @@ def run(
     where = state or STATE_DIR
     if not instance.acquire(where):
         print(
-            f"firelink is already running (pid {instance.holder(state)})",
+            f"firelink is already running (pid {instance.holder(where)})",
             file=sys.stderr,
         )
         return 1

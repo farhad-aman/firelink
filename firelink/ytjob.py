@@ -224,10 +224,16 @@ def burn_in_available() -> bool:
     return any(line.split()[1:2] == ["subtitles"] for line in listed.splitlines() if line.strip())
 
 
-def subtitle_for(directory: Path, lang: str) -> Path | None:
+def subtitle_for(directory: Path, lang: str, video: Path) -> Path | None:
+    """The video's own track. Playlist jobs share a folder, so any other
+    subtitle file there belongs to a different download or to the user."""
     if not directory.is_dir():
         return None
-    tracks = [p for p in directory.iterdir() if p.name.endswith(SUBTITLE_SUFFIXES)]
+    tracks = sorted(
+        p
+        for p in directory.iterdir()
+        if p.name.startswith(f"{video.stem}.") and p.name.endswith(SUBTITLE_SUFFIXES)
+    )
     preferred = [p for p in tracks if f".{lang}." in p.name]
     return (preferred or tracks or [None])[0]
 
