@@ -1,7 +1,7 @@
 import pytest
 
-from dl import spotmatch
-from dl.spotify import Track
+from firelink import spotmatch
+from firelink.spotify import Track
 
 SUPERHERO = Track(title="Superhero", artists=("Metro Boomin", "Future"), duration=183)
 ASTLEY = Track(title="Never Gonna Give You Up", artists=("Rick Astley",), duration=214)

@@ -1,6 +1,6 @@
 import pytest
 
-from dl import tomlio
+from firelink import tomlio
 
 SAMPLE = """\
 [general]

@@ -1,6 +1,6 @@
 import unicodedata
 
-from dl import search
+from firelink import search
 
 
 def test_an_empty_query_matches_everything():

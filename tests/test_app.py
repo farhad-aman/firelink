@@ -1,6 +1,6 @@
 import pytest
 
-from dl.tui.app import DlApp
+from firelink.tui.app import FirelinkApp
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ class FakeClient:
 
 
 async def test_app_starts_and_lists_rows(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         assert len(app.table.rows) == 2
@@ -98,7 +98,7 @@ async def test_app_starts_and_lists_rows(cfg):
 
 async def test_space_pauses_selected(cfg):
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("space")
@@ -108,7 +108,7 @@ async def test_space_pauses_selected(cfg):
 async def test_space_on_paused_row_resumes(cfg):
     client = FakeClient()
     client.active[0]["status"] = "paused"
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("space")
@@ -117,7 +117,7 @@ async def test_space_on_paused_row_resumes(cfg):
 
 async def test_down_then_space_targets_second_row(cfg):
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("down")
@@ -127,7 +127,7 @@ async def test_down_then_space_targets_second_row(cfg):
 
 async def test_shift_j_moves_row_down_in_queue(cfg):
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("J")
@@ -136,7 +136,7 @@ async def test_shift_j_moves_row_down_in_queue(cfg):
 
 async def test_shift_k_moves_row_up_in_queue(cfg):
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("K")
@@ -145,7 +145,7 @@ async def test_shift_k_moves_row_up_in_queue(cfg):
 
 async def test_p_pauses_all_and_u_resumes_all(cfg):
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("p")
@@ -155,7 +155,7 @@ async def test_p_pauses_all_and_u_resumes_all(cfg):
 
 
 async def test_tab_switches_to_completed_view(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         assert app.showing_completed is False
@@ -164,7 +164,7 @@ async def test_tab_switches_to_completed_view(cfg):
 
 
 async def test_enter_toggles_the_detail_line(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         assert app.table.expanded is False
@@ -177,7 +177,7 @@ async def test_enter_toggles_the_detail_line(cfg):
 
 
 async def test_q_quits(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("q")
@@ -186,8 +186,8 @@ async def test_q_quits(cfg):
 
 
 async def test_completed_tab_lists_history_and_is_navigable(cfg, tmp_path, monkeypatch):
-    from dl import history
-    from dl.tui import app as app_module
+    from firelink import history
+    from firelink.tui import app as app_module
 
     log = tmp_path / "history.jsonl"
     for i in range(3):
@@ -196,7 +196,7 @@ async def test_completed_tab_lists_history_and_is_navigable(cfg, tmp_path, monke
         )
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -207,8 +207,8 @@ async def test_completed_tab_lists_history_and_is_navigable(cfg, tmp_path, monke
 
 
 async def test_open_uses_the_completed_selection_not_the_active_row(cfg, tmp_path, monkeypatch):
-    from dl import history
-    from dl.tui import app as app_module
+    from firelink import history
+    from firelink.tui import app as app_module
 
     real = tmp_path / "done.mkv"
     real.write_text("data")
@@ -221,7 +221,7 @@ async def test_open_uses_the_completed_selection_not_the_active_row(cfg, tmp_pat
     opened = []
     monkeypatch.setattr(app_module.subprocess, "run", lambda cmd, **k: opened.append(cmd))
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -232,8 +232,8 @@ async def test_open_uses_the_completed_selection_not_the_active_row(cfg, tmp_pat
 
 
 async def test_delete_from_completed_list_only_keeps_the_file(cfg, tmp_path, monkeypatch):
-    from dl import history
-    from dl.tui import app as app_module
+    from firelink import history
+    from firelink.tui import app as app_module
 
     real = tmp_path / "done.mkv"
     real.write_text("data")
@@ -243,7 +243,7 @@ async def test_delete_from_completed_list_only_keeps_the_file(cfg, tmp_path, mon
     )
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -256,8 +256,8 @@ async def test_delete_from_completed_list_only_keeps_the_file(cfg, tmp_path, mon
 
 
 async def test_delete_from_completed_with_disk_removes_file_and_sidecar(cfg, tmp_path, monkeypatch):
-    from dl import history
-    from dl.tui import app as app_module
+    from firelink import history
+    from firelink.tui import app as app_module
 
     real = tmp_path / "done.mkv"
     real.write_text("data")
@@ -269,7 +269,7 @@ async def test_delete_from_completed_with_disk_removes_file_and_sidecar(cfg, tmp
     )
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -283,8 +283,8 @@ async def test_delete_from_completed_with_disk_removes_file_and_sidecar(cfg, tmp
 
 
 async def test_delete_modal_escape_changes_nothing(cfg, tmp_path, monkeypatch):
-    from dl import history
-    from dl.tui import app as app_module
+    from firelink import history
+    from firelink.tui import app as app_module
 
     real = tmp_path / "done.mkv"
     real.write_text("data")
@@ -294,7 +294,7 @@ async def test_delete_modal_escape_changes_nothing(cfg, tmp_path, monkeypatch):
     )
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -307,7 +307,7 @@ async def test_delete_modal_escape_changes_nothing(cfg, tmp_path, monkeypatch):
 
 
 async def test_delete_active_with_disk_removes_partial_file(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     partial = tmp_path / "a.iso"
     partial.write_text("half")
@@ -317,7 +317,7 @@ async def test_delete_active_with_disk_removes_partial_file(cfg, tmp_path, monke
     client.active[0]["files"][0]["path"] = str(partial)
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("d")
@@ -338,11 +338,11 @@ def type_url(pilot, app, url):
 
 
 async def test_adding_a_fresh_url_never_prompts(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")
@@ -353,8 +353,8 @@ async def test_adding_a_fresh_url_never_prompts(cfg, tmp_path, monkeypatch):
 
 
 async def test_adding_a_url_whose_file_exists_prompts(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
-    from dl.tui.modals import DuplicateModal
+    from firelink.tui import app as app_module
+    from firelink.tui.modals import DuplicateModal
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     target = cfg.categories["video"].dir / "dup.mkv"
@@ -362,7 +362,7 @@ async def test_adding_a_url_whose_file_exists_prompts(cfg, tmp_path, monkeypatch
     target.write_text("already here")
 
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")
@@ -374,7 +374,7 @@ async def test_adding_a_url_whose_file_exists_prompts(cfg, tmp_path, monkeypatch
 
 
 async def test_skipping_from_the_dashboard_queues_nothing(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     target = cfg.categories["video"].dir / "dup.mkv"
@@ -382,7 +382,7 @@ async def test_skipping_from_the_dashboard_queues_nothing(cfg, tmp_path, monkeyp
     target.write_text("already here")
 
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")
@@ -396,7 +396,7 @@ async def test_skipping_from_the_dashboard_queues_nothing(cfg, tmp_path, monkeyp
 
 
 async def test_renaming_from_the_dashboard_sends_the_rename_options(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     target = cfg.categories["video"].dir / "dup.mkv"
@@ -404,7 +404,7 @@ async def test_renaming_from_the_dashboard_sends_the_rename_options(cfg, tmp_pat
     target.write_text("keep me")
 
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")
@@ -421,7 +421,7 @@ async def test_renaming_from_the_dashboard_sends_the_rename_options(cfg, tmp_pat
 
 
 async def test_overwriting_from_the_dashboard_clears_the_old_file(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     target = cfg.categories["video"].dir / "dup.mkv"
@@ -430,7 +430,7 @@ async def test_overwriting_from_the_dashboard_clears_the_old_file(cfg, tmp_path,
     target.with_name("dup.mkv.aria2").write_text("ctl")
 
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")
@@ -450,9 +450,9 @@ async def test_overwriting_from_the_dashboard_clears_the_old_file(cfg, tmp_path,
 
 async def test_a_youtube_job_shows_even_with_no_aria2_downloads(cfg, tmp_path, monkeypatch):
     """The splash used to be painted whenever aria2 was idle, hiding yt rows."""
-    from dl import ytjob
-    from dl.tui import app as app_module
-    from dl.youtube import DEFAULTS
+    from firelink import ytjob
+    from firelink.tui import app as app_module
+    from firelink.youtube import DEFAULTS
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     job = ytjob.new_job("https://youtu.be/abc", tmp_path / "out", DEFAULTS)
@@ -463,7 +463,7 @@ async def test_a_youtube_job_shows_even_with_no_aria2_downloads(cfg, tmp_path, m
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -472,13 +472,13 @@ async def test_a_youtube_job_shows_even_with_no_aria2_downloads(cfg, tmp_path, m
 
 
 async def test_the_splash_still_shows_when_nothing_at_all_is_running(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -491,7 +491,7 @@ async def test_retry_resends_the_original_url_not_the_local_path(cfg):
     client = FakeClient()
     client.active[0].update(status="error", errorMessage="HTTP 403")
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("r")
@@ -504,7 +504,7 @@ async def test_retry_without_a_known_url_queues_nothing(cfg):
     client.active[0].update(status="error", errorMessage="boom")
     client.active[0]["files"][0]["uris"] = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("r")
@@ -514,7 +514,7 @@ async def test_retry_without_a_known_url_queues_nothing(cfg):
 
 async def test_retry_survives_a_daemon_that_refuses(cfg):
     """An RPC fault must not tear the dashboard down with a traceback."""
-    from dl.rpc import Aria2Unreachable
+    from firelink.rpc import Aria2Unreachable
 
     class Refusing(FakeClient):
         def add_uri(self, uris, options):
@@ -523,7 +523,7 @@ async def test_retry_survives_a_daemon_that_refuses(cfg):
     client = Refusing()
     client.active[0].update(status="error", errorMessage="boom")
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("r")
@@ -532,9 +532,9 @@ async def test_retry_survives_a_daemon_that_refuses(cfg):
 
 
 async def test_retrying_a_youtube_row_respawns_its_job(cfg, tmp_path, monkeypatch):
-    from dl import ytjob
-    from dl.tui import app as app_module
-    from dl.youtube import DEFAULTS
+    from firelink import ytjob
+    from firelink.tui import app as app_module
+    from firelink.youtube import DEFAULTS
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     spawned = []
@@ -547,7 +547,7 @@ async def test_retrying_a_youtube_row_respawns_its_job(cfg, tmp_path, monkeypatc
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -561,9 +561,9 @@ async def test_retrying_a_youtube_row_respawns_its_job(cfg, tmp_path, monkeypatc
 
 async def test_a_failed_youtube_job_stays_visible(cfg, tmp_path, monkeypatch):
     """A job that vanished on error looks exactly like one that never started."""
-    from dl import ytjob
-    from dl.tui import app as app_module
-    from dl.youtube import DEFAULTS
+    from firelink import ytjob
+    from firelink.tui import app as app_module
+    from firelink.youtube import DEFAULTS
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     job = ytjob.new_job("https://youtu.be/abc", tmp_path / "out", DEFAULTS)
@@ -574,7 +574,7 @@ async def test_a_failed_youtube_job_stays_visible(cfg, tmp_path, monkeypatch):
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -585,9 +585,9 @@ async def test_a_failed_youtube_job_stays_visible(cfg, tmp_path, monkeypatch):
 
 
 async def test_deleting_a_failed_youtube_job_clears_its_record(cfg, tmp_path, monkeypatch):
-    from dl import ytjob
-    from dl.tui import app as app_module
-    from dl.youtube import DEFAULTS
+    from firelink import ytjob
+    from firelink.tui import app as app_module
+    from firelink.youtube import DEFAULTS
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     job = ytjob.new_job("https://youtu.be/abc", tmp_path / "out", DEFAULTS)
@@ -598,7 +598,7 @@ async def test_deleting_a_failed_youtube_job_clears_its_record(cfg, tmp_path, mo
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -612,9 +612,9 @@ async def test_deleting_a_failed_youtube_job_clears_its_record(cfg, tmp_path, mo
 
 
 async def test_a_finished_youtube_job_leaves_the_list(cfg, tmp_path, monkeypatch):
-    from dl import ytjob
-    from dl.tui import app as app_module
-    from dl.youtube import DEFAULTS
+    from firelink import ytjob
+    from firelink.tui import app as app_module
+    from firelink.youtube import DEFAULTS
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     job = ytjob.new_job("https://youtu.be/abc", tmp_path / "out", DEFAULTS)
@@ -624,7 +624,7 @@ async def test_a_finished_youtube_job_leaves_the_list(cfg, tmp_path, monkeypatch
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -634,9 +634,9 @@ async def test_a_finished_youtube_job_leaves_the_list(cfg, tmp_path, monkeypatch
 def plant_job(tmp_path, monkeypatch, status="active", **over):
     """A yt-dlp job on disk where the dashboard will find it, plus the list of
     jobs any respawn lands in."""
-    from dl import ytjob
-    from dl.tui import app as app_module
-    from dl.youtube import DEFAULTS
+    from firelink import ytjob
+    from firelink.tui import app as app_module
+    from firelink.youtube import DEFAULTS
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     spawned = []
@@ -649,7 +649,7 @@ def plant_job(tmp_path, monkeypatch, status="active", **over):
 
 
 def read_job(saved):
-    from dl import ytjob
+    from firelink import ytjob
 
     return ytjob.read(saved)
 
@@ -661,7 +661,7 @@ async def test_space_on_a_youtube_row_never_reaches_aria2(cfg, tmp_path, monkeyp
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -676,7 +676,7 @@ async def test_space_on_a_paused_youtube_row_respawns_it(cfg, tmp_path, monkeypa
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -691,7 +691,7 @@ async def test_pause_all_pauses_youtube_jobs_without_telling_aria2(cfg, tmp_path
     job, saved, _spawned = plant_job(tmp_path, monkeypatch)
     client = FakeClient()
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -706,7 +706,7 @@ async def test_resume_all_respawns_paused_youtube_jobs(cfg, tmp_path, monkeypatc
     job, _saved, spawned = plant_job(tmp_path, monkeypatch, status="paused")
     client = FakeClient()
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -724,7 +724,7 @@ async def test_resume_all_leaves_a_running_youtube_job_alone(cfg, tmp_path, monk
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -739,7 +739,7 @@ async def test_reordering_ignores_youtube_rows(cfg, tmp_path, monkeypatch):
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -754,7 +754,7 @@ async def test_speed_limit_ignores_youtube_rows(cfg, tmp_path, monkeypatch):
     client = FakeClient()
     client.active = []
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -771,7 +771,7 @@ async def test_retry_keeps_the_proxy_it_was_downloading_through(cfg):
     client.active[0].update(status="error", errorMessage="HTTP 403")
     client.options["g1"] = {"all-proxy": "http://127.0.0.1:2080"}
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -785,7 +785,7 @@ async def test_retry_of_an_unproxied_download_stays_unproxied(cfg):
     client.active = [client.active[0]]
     client.active[0].update(status="error", errorMessage="HTTP 403")
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -798,7 +798,7 @@ async def test_a_proxied_download_is_badged_in_the_table(cfg):
     client = FakeClient()
     client.options = {"g1": {"all-proxy": "http://127.0.0.1:2080"}}
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -812,7 +812,7 @@ async def test_an_http_proxy_option_also_counts_as_proxied(cfg):
     client = FakeClient()
     client.options = {"g1": {"http-proxy": "http://127.0.0.1:2080"}}
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -823,7 +823,7 @@ async def test_an_empty_proxy_option_is_not_proxied(cfg):
     client = FakeClient()
     client.options = {"g1": {"all-proxy": ""}}
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -834,7 +834,7 @@ async def test_options_are_fetched_once_per_download(cfg):
     """Options cannot change under us, and the table refreshes twice a second."""
     client = FakeClient()
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         for _ in range(4):
@@ -844,13 +844,13 @@ async def test_options_are_fetched_once_per_download(cfg):
 
 
 async def test_a_failed_option_lookup_leaves_the_row_unbadged(cfg):
-    from dl.rpc import Aria2Error
+    from firelink.rpc import Aria2Error
 
     class Grumpy(FakeClient):
         def get_option(self, gid):
             raise Aria2Error(1, "nope")
 
-    app = DlApp(cfg, Grumpy())
+    app = FirelinkApp(cfg, Grumpy())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -860,7 +860,7 @@ async def test_a_failed_option_lookup_leaves_the_row_unbadged(cfg):
 async def test_the_proxy_cache_forgets_downloads_that_are_gone(cfg):
     client = FakeClient()
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -873,7 +873,7 @@ async def test_the_proxy_cache_forgets_downloads_that_are_gone(cfg):
 async def test_delete_active_waits_for_the_removal_to_settle(cfg, tmp_path, monkeypatch):
     """aria2 rewrites the control file as it winds a download down, so unlinking
     before the removal settles leaves the .aria2 sidecar behind."""
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     partial = tmp_path / "a.iso"
     partial.write_text("half")
@@ -885,7 +885,7 @@ async def test_delete_active_waits_for_the_removal_to_settle(cfg, tmp_path, monk
     client.active[0]["files"][0]["path"] = str(partial)
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("d")
@@ -907,8 +907,8 @@ async def test_delete_active_waits_for_the_removal_to_settle(cfg, tmp_path, monk
 async def test_delete_active_gives_up_waiting_when_the_daemon_goes_away(
     cfg, tmp_path, monkeypatch
 ):
-    from dl.rpc import Aria2Unreachable
-    from dl.tui import app as app_module
+    from firelink.rpc import Aria2Unreachable
+    from firelink.tui import app as app_module
 
     partial = tmp_path / "a.iso"
     partial.write_text("half")
@@ -921,7 +921,7 @@ async def test_delete_active_gives_up_waiting_when_the_daemon_goes_away(
     client.active[0]["files"][0]["path"] = str(partial)
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("d")
@@ -935,7 +935,7 @@ async def test_delete_active_gives_up_waiting_when_the_daemon_goes_away(
 
 
 async def test_delete_active_list_only_keeps_partial_file(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     partial = tmp_path / "a.iso"
     partial.write_text("half")
@@ -944,7 +944,7 @@ async def test_delete_active_list_only_keeps_partial_file(cfg, tmp_path, monkeyp
     client.active[0]["files"][0]["path"] = str(partial)
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("d")
@@ -956,10 +956,10 @@ async def test_delete_active_list_only_keeps_partial_file(cfg, tmp_path, monkeyp
 
 
 async def test_hint_line_changes_with_the_tab(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -969,7 +969,7 @@ async def test_hint_line_changes_with_the_tab(cfg, tmp_path, monkeypatch):
 
 
 async def test_filter_items_is_identity_by_default(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         items = [{"gid": "x"}, {"gid": "y"}]
@@ -979,7 +979,7 @@ async def test_filter_items_is_identity_by_default(cfg):
 async def test_base_app_shows_splash_when_empty(cfg):
     client = FakeClient()
     client.active = []
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -990,7 +990,7 @@ async def test_base_app_shows_splash_when_empty(cfg):
 async def test_after_refresh_runs_on_a_successful_poll(cfg):
     seen = []
 
-    class Probe(DlApp):
+    class Probe(FirelinkApp):
         def _after_refresh(self, items):
             seen.append(len(items))
 
@@ -1002,11 +1002,11 @@ async def test_after_refresh_runs_on_a_successful_poll(cfg):
 
 
 async def test_after_refresh_is_skipped_when_the_daemon_is_unreachable(cfg):
-    from dl.rpc import Aria2Unreachable
+    from firelink.rpc import Aria2Unreachable
 
     seen = []
 
-    class Dead(DlApp):
+    class Dead(FirelinkApp):
         def _after_refresh(self, items):
             seen.append(items)
 
@@ -1024,7 +1024,7 @@ async def test_after_refresh_is_skipped_when_the_daemon_is_unreachable(cfg):
 
 
 async def test_filter_items_narrows_what_reaches_the_table(cfg):
-    class OnlyG2(DlApp):
+    class OnlyG2(FirelinkApp):
         def _filter_items(self, items):
             return [i for i in items if i["gid"] == "g2"]
 
@@ -1036,7 +1036,7 @@ async def test_filter_items_narrows_what_reaches_the_table(cfg):
 
 
 async def test_lost_daemon_sets_disconnected_flag(cfg):
-    from dl.rpc import Aria2Unreachable
+    from firelink.rpc import Aria2Unreachable
 
     class DeadClient(FakeClient):
         def tell_active(self):
@@ -1045,7 +1045,7 @@ async def test_lost_daemon_sets_disconnected_flag(cfg):
         def get_global_stat(self):
             raise Aria2Unreachable("gone")
 
-    app = DlApp(cfg, DeadClient())
+    app = FirelinkApp(cfg, DeadClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -1053,7 +1053,7 @@ async def test_lost_daemon_sets_disconnected_flag(cfg):
 
 
 async def test_reconnect_clears_disconnected_flag(cfg):
-    from dl.rpc import Aria2Unreachable
+    from firelink.rpc import Aria2Unreachable
 
     class FlakyClient(FakeClient):
         def __init__(self):
@@ -1066,7 +1066,7 @@ async def test_reconnect_clears_disconnected_flag(cfg):
             return self.active
 
     client = FlakyClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -1077,7 +1077,7 @@ async def test_reconnect_clears_disconnected_flag(cfg):
 
 
 async def test_l_applies_the_limit_to_the_selected_download_only(cfg, monkeypatch, tmp_path):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
     from textual.widgets import Input
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
@@ -1085,7 +1085,7 @@ async def test_l_applies_the_limit_to_the_selected_download_only(cfg, monkeypatc
     applied = []
     client.change_option = lambda gid, opts: applied.append((gid, opts))
 
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("l")
@@ -1100,11 +1100,11 @@ async def test_l_applies_the_limit_to_the_selected_download_only(cfg, monkeypatc
 
 async def test_there_is_no_global_limit_key(cfg, monkeypatch, tmp_path):
     """`L` used to cap every download at once; that option is gone."""
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("L")
@@ -1114,12 +1114,12 @@ async def test_there_is_no_global_limit_key(cfg, monkeypatch, tmp_path):
 
 
 async def test_limit_on_an_empty_queue_does_nothing(cfg, monkeypatch, tmp_path):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     client = FakeClient()
     client.active = []
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("l")
@@ -1130,11 +1130,11 @@ async def test_limit_on_an_empty_queue_does_nothing(cfg, monkeypatch, tmp_path):
 async def test_adding_a_listed_domain_from_the_dashboard_proxies_it(cfg, monkeypatch):
     """The add box has no -p, so without a rule a filtered URL can only be
     queued direct — and fail."""
-    from dl import config
+    from firelink import config
 
     client = FakeClient()
     client.active = []
-    app = DlApp(config.replace(cfg, proxy_domains=("blocked.com",)), client)
+    app = FirelinkApp(config.replace(cfg, proxy_domains=("blocked.com",)), client)
     async with app.run_test() as pilot:
         await pilot.pause()
         app.queueing.add(["https://blocked.com/a.iso"])
@@ -1145,7 +1145,7 @@ async def test_adding_a_listed_domain_from_the_dashboard_proxies_it(cfg, monkeyp
 async def test_adding_an_unlisted_domain_from_the_dashboard_stays_direct(cfg):
     client = FakeClient()
     client.active = []
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         app.queueing.add(["https://open.com/a.iso"])
@@ -1154,13 +1154,13 @@ async def test_adding_an_unlisted_domain_from_the_dashboard_stays_direct(cfg):
 
 
 async def test_retry_proxies_a_listed_domain_even_if_it_was_added_direct(cfg):
-    from dl import config
+    from firelink import config
 
     client = FakeClient()
     client.active = [client.active[0]]
     client.active[0].update(status="error", errorMessage="HTTP 403")
 
-    app = DlApp(config.replace(cfg, proxy_domains=("e.com",)), client)
+    app = FirelinkApp(config.replace(cfg, proxy_domains=("e.com",)), client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -1172,7 +1172,7 @@ async def test_retry_proxies_a_listed_domain_even_if_it_was_added_direct(cfg):
 async def test_deleting_a_youtube_job_takes_its_fragments_with_it(cfg, tmp_path, monkeypatch):
     """Fragments live outside the destination, so nothing else would ever
     notice them — the same leftover the .aria2 sidecar used to be."""
-    from dl import ytjob
+    from firelink import ytjob
 
     job, saved, _spawned = plant_job(tmp_path, monkeypatch)
     scratch = ytjob.scratch_dir(tmp_path / "yt", job)
@@ -1183,7 +1183,7 @@ async def test_deleting_a_youtube_job_takes_its_fragments_with_it(cfg, tmp_path,
 
     client = FakeClient()
     client.active = []
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -1202,7 +1202,7 @@ async def test_a_job_whose_supervisor_died_stops_claiming_to_run(cfg, tmp_path, 
     import subprocess
     import sys
 
-    from dl import ytjob
+    from firelink import ytjob
 
     proc = subprocess.Popen([sys.executable, "-c", "pass"])
     proc.wait()
@@ -1210,7 +1210,7 @@ async def test_a_job_whose_supervisor_died_stops_claiming_to_run(cfg, tmp_path, 
 
     client = FakeClient()
     client.active = []
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -1220,10 +1220,10 @@ async def test_a_job_whose_supervisor_died_stops_claiming_to_run(cfg, tmp_path, 
 
 
 async def test_reload_swaps_the_theme_everywhere(cfg):
-    from dl import config as config_module
+    from firelink import config as config_module
 
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         changed = config_module.replace(
@@ -1238,10 +1238,10 @@ async def test_reload_swaps_the_theme_everywhere(cfg):
 
 
 async def test_reload_pushes_a_changed_concurrency_to_the_daemon(cfg):
-    from dl import config as config_module
+    from firelink import config as config_module
 
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         changed = config_module.replace(
@@ -1253,11 +1253,11 @@ async def test_reload_pushes_a_changed_concurrency_to_the_daemon(cfg):
 
 async def test_reload_leaves_the_daemon_alone_when_concurrency_is_unchanged(cfg):
     """The other limits are set per-download at queue time; pushing them
-    globally would change behaviour for downloads dl did not queue."""
-    from dl import config as config_module
+    globally would change behaviour for downloads firelink did not queue."""
+    from firelink import config as config_module
 
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         changed = config_module.replace(
@@ -1269,15 +1269,15 @@ async def test_reload_leaves_the_daemon_alone_when_concurrency_is_unchanged(cfg)
 
 async def test_reload_survives_a_daemon_that_is_gone(cfg):
     """A settings save must not fail because aria2 is down."""
-    from dl import config as config_module
-    from dl.rpc import Aria2Unreachable
+    from firelink import config as config_module
+    from firelink.rpc import Aria2Unreachable
 
     class Refusing(FakeClient):
         def change_global_option(self, options):
             raise Aria2Unreachable("gone")
 
     client = Refusing()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         changed = config_module.replace(
@@ -1291,7 +1291,7 @@ async def test_reload_survives_a_daemon_that_is_gone(cfg):
 
 async def test_s_opens_the_settings_menu(cfg):
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("s")
@@ -1316,7 +1316,7 @@ async def test_deleting_a_download_that_has_no_filename_yet_does_not_crash(cfg):
             "errorMessage": "",
         }
     ]
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -1338,38 +1338,38 @@ async def test_modal_chrome_follows_the_chosen_theme(cfg):
     """get_css_variables() runs inside App.__init__, before theme_data is set,
     so the stylesheet cached the fallback theme's colours and every modal came
     up aurora teal no matter what the dashboard was."""
-    from dl import config as config_module
-    from dl import theme as theme_module
+    from firelink import config as config_module
+    from firelink import theme as theme_module
 
     ember = config_module.replace(
         cfg, general=config_module.replace(cfg.general, theme="ember")
     )
-    app = DlApp(ember, FakeClient())
+    app = FirelinkApp(ember, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         wanted = theme_module.THEMES["ember"].accent
-        assert app.stylesheet._variables["dl-accent"] == wanted
+        assert app.stylesheet._variables["firelink-accent"] == wanted
         assert wanted != theme_module.THEMES["aurora"].accent
 
 
 async def test_changing_the_theme_repaints_the_chrome(cfg):
-    from dl import config as config_module
-    from dl import theme as theme_module
+    from firelink import config as config_module
+    from firelink import theme as theme_module
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app.reload_config(
             config_module.replace(cfg, general=config_module.replace(cfg.general, theme="dusk"))
         )
         await pilot.pause()
-        assert app.stylesheet._variables["dl-accent"] == theme_module.THEMES["dusk"].accent
+        assert app.stylesheet._variables["firelink-accent"] == theme_module.THEMES["dusk"].accent
 
 
 async def test_a_spotify_link_from_the_add_box_goes_to_the_spotify_flow(cfg, tmp_path, monkeypatch):
     """yt-dlp claims Spotify addresses too, with an extractor named DRM, so
     asking it first sent every pasted link into that dead end."""
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     seen = {}
@@ -1394,7 +1394,7 @@ async def test_a_spotify_link_from_the_add_box_goes_to_the_spotify_flow(cfg, tmp
         lambda *a, **k: pytest.fail("a Spotify link reached the YouTube flow"),
     )
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")

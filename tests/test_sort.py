@@ -1,6 +1,6 @@
 import pytest
 
-from dl import sort
+from firelink import sort
 
 
 def order(field="queue", reverse=False):

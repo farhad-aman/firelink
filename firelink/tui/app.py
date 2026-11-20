@@ -41,7 +41,7 @@ SETTLE_TIMEOUT = 5.0
 QUEUE_SWEEP = 5.0
 
 
-class DlApp(App):
+class FirelinkApp(App):
     CSS = CSS
     BINDINGS = [
         ("a", "add", "add"),
@@ -104,21 +104,21 @@ class DlApp(App):
 
     def get_css_variables(self) -> dict[str, str]:
         """Textual's stock palette is blue and orange, which is why the modals
-        looked like a different program. Feeding dl's own theme in means the
+        looked like a different program. Feeding firelink's own theme in means the
         chrome follows whichever theme is chosen."""
         # Textual asks for these during App.__init__, before our theme exists.
         chosen = getattr(self, "theme_data", None) or theme.THEMES[theme.DEFAULT]
         return {
             **super().get_css_variables(),
-            "dl-accent": chosen.accent,
-            "dl-danger": chosen.danger,
-            "dl-ok": chosen.ok,
-            "dl-warn": chosen.warn,
-            "dl-dim": chosen.dim,
-            "dl-text": "#d7dae0" if not chosen.mono else "#ffffff",
-            "dl-surface": "#15171c" if not chosen.mono else "#000000",
-            "dl-quiet": "#232833" if not chosen.mono else "#222222",
-            "dl-veil": "rgba(8,10,14,0.65)",
+            "firelink-accent": chosen.accent,
+            "firelink-danger": chosen.danger,
+            "firelink-ok": chosen.ok,
+            "firelink-warn": chosen.warn,
+            "firelink-dim": chosen.dim,
+            "firelink-text": "#d7dae0" if not chosen.mono else "#ffffff",
+            "firelink-surface": "#15171c" if not chosen.mono else "#000000",
+            "firelink-quiet": "#232833" if not chosen.mono else "#222222",
+            "firelink-veil": "rgba(8,10,14,0.65)",
         }
 
     def compose(self) -> ComposeResult:
@@ -180,7 +180,7 @@ class DlApp(App):
 
         Only max_concurrent reaches the daemon. The rest of the limits are set
         per-download at queue time, so pushing them globally would change
-        behaviour for downloads dl did not queue.
+        behaviour for downloads firelink did not queue.
         """
         was = self.cfg
         self.cfg = cfg
@@ -758,13 +758,13 @@ def run_tui(cfg: Config, client, state: Path | None = None) -> int:
     where = state or STATE_DIR
     if not instance.acquire(where):
         print(
-            f"dl is already running (pid {instance.holder(where)}) — "
-            f"switch to that window, or `dl kill` to stop everything",
+            f"firelink is already running (pid {instance.holder(where)}) — "
+            f"switch to that window, or `firelink kill` to stop everything",
             file=sys.stderr,
         )
         return 1
     try:
-        DlApp(cfg, client).run()
+        FirelinkApp(cfg, client).run()
     finally:
         instance.release(where)
     return 0

@@ -10,11 +10,11 @@ from collections import deque
 
 import pytest
 
-from dl import cli, config, settings, theme, watch
-from dl.tui.completed import render_entry
-from dl.tui.settings import CategoriesScreen, FormScreen, HeadersScreen, ProxyScreen
-from dl.tui.table import render_row, row_from_status
-from dl.tui.ytflow import summarise as yt_summarise
+from firelink import cli, config, settings, theme, watch
+from firelink.tui.completed import render_entry
+from firelink.tui.settings import CategoriesScreen, FormScreen, HeadersScreen, ProxyScreen
+from firelink.tui.table import render_row, row_from_status
+from firelink.tui.ytflow import summarise as yt_summarise
 
 
 def wide(text: str) -> list[str]:
@@ -90,7 +90,7 @@ def test_the_queue_line_has_no_wide_glyphs(mono_cfg, capsys):
 
 
 def test_a_skipped_duplicate_line_has_no_wide_glyphs(mono_cfg, capsys):
-    from dl import duplicates
+    from firelink import duplicates
 
     client = Recorder()
     cli.cmd_add(
@@ -109,7 +109,7 @@ def test_ls_has_no_wide_glyphs(mono_cfg, capsys):
 
 
 def test_history_has_no_wide_glyphs(mono_cfg, tmp_path, capsys):
-    from dl import history
+    from firelink import history
 
     log = tmp_path / "history.jsonl"
     history.append(
@@ -131,8 +131,8 @@ def test_history_has_no_wide_glyphs(mono_cfg, tmp_path, capsys):
 
 
 def test_the_note_under_the_list_has_no_wide_glyphs(mono_cfg):
-    from dl import sort
-    from dl.tui.searchbar import summary
+    from firelink import sort
+    from firelink.tui.searchbar import summary
 
     th = theme.select(mono_cfg)
     for field in sort.FIELDS + sort.DONE_FIELDS:

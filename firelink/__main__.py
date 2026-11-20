@@ -2,39 +2,39 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import checksum, cli, config, daemon, install, routing, spotify, ytdlp
+from . import checksum, cli, config, daemon, install, legacy, routing, spotify, ytdlp
 from .config import CONFIG_FILE
 from .rpc import Aria2Error, Aria2Unreachable
 from .tui.preview import Request, run_preview
 
 USAGE = """\
-dl — download manager
+firelink — download manager
 
-  dl <url> [url...]        queue downloads
-  dl -f <file|->           queue URLs from a file or stdin
-  dl -d <dir> <url>        override the destination for this download
-  dl -p <url>              download through the sing-box proxy
-  dl -H "Key: Value"       extra request header (repeatable)
-  dl -c sha256=<hex>       verify the download against a checksum
-  dl <spotify url>         a track, album or playlist (audio from YouTube)
-  dl <magnet:…>            magnet link
-  dl file.torrent          torrent file, local or over http
-  --no-preview             queue and exit without attaching the live preview
-  dl                       open the TUI
-  dl --version             print the installed version
+  firelink <url> [url...]        queue downloads
+  firelink -f <file|->           queue URLs from a file or stdin
+  firelink -d <dir> <url>        override the destination for this download
+  firelink -p <url>              download through the sing-box proxy
+  firelink -H "Key: Value"       extra request header (repeatable)
+  firelink -c sha256=<hex>       verify the download against a checksum
+  firelink <spotify url>         a track, album or playlist (audio from YouTube)
+  firelink <magnet:…>            magnet link
+  firelink file.torrent          torrent file, local or over http
+  --no-preview                   queue and exit without attaching the live preview
+  firelink                       open the TUI
+  firelink --version             print the installed version
 
-  dl ls [name]             list downloads, optionally matching a name (--json)
-  dl history [n] [name]    list finished downloads (--failed, --json)
-  dl pause <gid|all>       dl resume <gid|all>      dl rm <gid>
-  dl watch                 queue URLs as you copy them
-  dl kill                  stop the daemon
-  dl kill --strays         find daemons older versions left behind
+  firelink ls [name]             list downloads, optionally matching a name (--json)
+  firelink history [n] [name]    list finished downloads (--failed, --json)
+  firelink pause <gid|all>       firelink resume <gid|all>   firelink rm <gid>
+  firelink watch                 queue URLs as you copy them
+  firelink kill                  stop the daemon
+  firelink kill --strays         find daemons older versions left behind
 """
 
 SUBCOMMANDS = {"ls", "history", "pause", "resume", "rm", "watch", "kill", "help"}
 
 # Flags each subcommand understands. Anything else is a mistake worth saying so
-# about rather than dropping: `dl ls --failed` used to filter nothing, quietly.
+# about rather than dropping: `firelink ls --failed` used to filter nothing, quietly.
 SUBCOMMAND_FLAGS = {
     "kill": {"--strays"},
     "history": {"--failed", "--json"},
@@ -43,14 +43,14 @@ SUBCOMMAND_FLAGS = {
 
 
 class ArgError(Exception):
-    """A bad command line. Carries the message dl should print."""
+    """A bad command line. Carries the message firelink should print."""
 
 
 class _Parser(argparse.ArgumentParser):
     """argparse that reports rather than exits.
 
     The stock parser calls sys.exit(2) from inside error(), which would bypass
-    main()'s return codes and print a usage block dl does not own.
+    main()'s return codes and print a usage block firelink does not own.
     """
 
     def error(self, message: str):
@@ -61,7 +61,7 @@ class _Parser(argparse.ArgumentParser):
 
 
 def _add_parser() -> _Parser:
-    parser = _Parser(prog="dl", add_help=False)
+    parser = _Parser(prog="firelink", add_help=False)
     parser.add_argument("urls", nargs="*")
     parser.add_argument("-d", "--dir", dest="directory")
     parser.add_argument("-f", "--file", dest="url_file")
@@ -83,10 +83,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return _run(list(argv if argv is not None else sys.argv[1:]))
     except ArgError as exc:
-        print(f"dl: {exc}\n\n{USAGE}", file=sys.stderr)
+        print(f"firelink: {exc}\n\n{USAGE}", file=sys.stderr)
         return 1
-    except (Aria2Error, Aria2Unreachable) as exc:
-        print(f"dl: {exc}", file=sys.stderr)
+    except (Aria2Error, Aria2Unreachable, legacy.LegacyInUse) as exc:
+        print(f"firelink: {exc}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         return 130
@@ -95,10 +95,10 @@ def main(argv: list[str] | None = None) -> int:
 def _run_youtube(cfg, urls: list[str], proxy: bool, interactive: bool) -> int:
     """YouTube needs yt-dlp: aria2 cannot resolve a watch page into streams."""
     if not ytdlp.available():
-        print(f"dl: yt-dlp not found — run `{install.update_command()}`", file=sys.stderr)
+        print(f"firelink: yt-dlp not found — run `{install.update_command()}`", file=sys.stderr)
         return 1
     if not interactive:
-        print("dl: YouTube downloads need a terminal to choose quality", file=sys.stderr)
+        print("firelink: YouTube downloads need a terminal to choose quality", file=sys.stderr)
         return 1
 
     from .tui.ytflow import run_youtube
@@ -112,10 +112,10 @@ def _run_youtube(cfg, urls: list[str], proxy: bool, interactive: bool) -> int:
 def _run_spotify(cfg, urls: list[str], interactive: bool) -> int:
     """Spotify needs yt-dlp: the audio is fetched from YouTube, not Spotify."""
     if not ytdlp.available():
-        print(f"dl: yt-dlp not found — run `{install.update_command()}`", file=sys.stderr)
+        print(f"firelink: yt-dlp not found — run `{install.update_command()}`", file=sys.stderr)
         return 1
     if not interactive:
-        print("dl: Spotify downloads need a terminal to confirm matches", file=sys.stderr)
+        print("firelink: Spotify downloads need a terminal to confirm matches", file=sys.stderr)
         return 1
 
     from .tui.spotapp import run_spotify
@@ -132,7 +132,7 @@ def _run(args: list[str]) -> int:
         return 0
 
     if args and args[0] == "--version":
-        print(f"dl {install.version()}")
+        print(f"firelink {install.version()}")
         return 0
 
     command = args[0] if args and args[0] in SUBCOMMANDS else None
@@ -161,6 +161,9 @@ def _run(args: list[str]) -> int:
                 raise ArgError(str(exc)) from None
         urls += list(opts.urls)
 
+    legacy.adopt(
+        legacy.LEGACY_CONFIG_DIR, legacy.LEGACY_STATE_DIR, config.CONFIG_DIR, config.STATE_DIR
+    )
     if not CONFIG_FILE.exists():
         config.write_default(CONFIG_FILE)
     cfg = config.load(CONFIG_FILE)
@@ -178,10 +181,10 @@ def _run(args: list[str]) -> int:
     try:
         client = daemon.ensure_running(cfg)
     except daemon.Aria2Missing as exc:
-        print(f"dl: {exc}", file=sys.stderr)
+        print(f"firelink: {exc}", file=sys.stderr)
         return 1
     except daemon.DaemonStartFailed as exc:
-        print(f"dl: {exc}", file=sys.stderr)
+        print(f"firelink: {exc}", file=sys.stderr)
         return 1
 
     if command == "ls":
@@ -199,7 +202,7 @@ def _run(args: list[str]) -> int:
         return cli.cmd_resume(args[1] if len(args) > 1 else "all", client)
     if command == "rm":
         if len(args) < 2:
-            print("dl: rm needs a gid", file=sys.stderr)
+            print("firelink: rm needs a gid", file=sys.stderr)
             return 1
         return cli.cmd_rm(args[1], client)
     if command == "kill":
@@ -269,7 +272,7 @@ def _run(args: list[str]) -> int:
         return 130 if cancelled else outcome["rc"]
 
     if not sys.stdout.isatty():
-        print("dl: not a terminal — try `dl ls`", file=sys.stderr)
+        print("firelink: not a terminal — try `firelink ls`", file=sys.stderr)
         return 1
 
     from .tui.app import run_tui

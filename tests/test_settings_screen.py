@@ -2,8 +2,8 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.widgets import Input, Static
 
-from dl import config, settings
-from dl.tui.settings import (
+from firelink import config, settings
+from firelink.tui.settings import (
     CategoriesScreen,
     FormScreen,
     HeadersScreen,

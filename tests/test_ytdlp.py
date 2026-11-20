@@ -1,6 +1,6 @@
 import pytest
 
-from dl import ytdlp
+from firelink import ytdlp
 
 
 class Fake:
@@ -187,7 +187,7 @@ def test_the_clipboard_watcher_catches_a_site_that_was_never_listed(monkeypatch)
     firelink and every other site yt-dlp supports."""
     from collections import deque
 
-    from dl import watch
+    from firelink import watch
 
     monkeypatch.setattr(ytdlp, "_classes", None)
     monkeypatch.setattr(ytdlp, "_load", lambda: [Fake])
@@ -200,7 +200,7 @@ def test_the_clipboard_watcher_catches_a_site_that_was_never_listed(monkeypatch)
 
 
 def test_the_command_line_sends_an_unlisted_site_to_yt_dlp(monkeypatch):
-    from dl import __main__ as entry
+    from firelink import __main__ as entry
 
     monkeypatch.setattr(ytdlp, "_classes", None)
     monkeypatch.setattr(ytdlp, "_load", lambda: [Fake])
@@ -216,7 +216,7 @@ def test_a_fresh_yt_dlp_needs_no_advice(monkeypatch):
 def test_a_stale_yt_dlp_says_how_to_update(monkeypatch):
     """A silent stale copy shows up as sites mysteriously breaking, so the
     advice has to name the command that actually works for this install."""
-    from dl import install
+    from firelink import install
 
     monkeypatch.setattr(ytdlp, "age_days", lambda: 200)
     monkeypatch.setattr(install, "update_command", lambda: "brew upgrade firelink")
@@ -226,7 +226,7 @@ def test_a_stale_yt_dlp_says_how_to_update(monkeypatch):
 
 
 def test_a_stale_yt_dlp_in_a_clone_says_make(monkeypatch):
-    from dl import install
+    from firelink import install
 
     monkeypatch.setattr(ytdlp, "age_days", lambda: 200)
     monkeypatch.setattr(install, "update_command", lambda: "make install")

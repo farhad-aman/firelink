@@ -1,8 +1,8 @@
 import pytest
 
-from dl import history, sort
-from dl.tui import app as app_module
-from dl.tui.app import DlApp
+from firelink import history, sort
+from firelink.tui import app as app_module
+from firelink.tui.app import FirelinkApp
 from tests.test_app import FakeClient
 
 
@@ -53,7 +53,7 @@ def rendered(app) -> str:
 
 
 async def test_the_list_starts_in_queue_order(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -62,7 +62,7 @@ async def test_the_list_starts_in_queue_order(cfg):
 
 
 async def test_s_cycles_to_name_order(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -73,7 +73,7 @@ async def test_s_cycles_to_name_order(cfg):
 
 
 async def test_s_again_sorts_by_size_biggest_first(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -86,7 +86,7 @@ async def test_s_again_sorts_by_size_biggest_first(cfg):
 
 async def test_cycling_all_the_way_round_restores_queue_order(cfg):
     """Re-sorting what is on screen could never recover the original order."""
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -98,7 +98,7 @@ async def test_cycling_all_the_way_round_restores_queue_order(cfg):
 
 
 async def test_r_reverses_the_current_field(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -111,7 +111,7 @@ async def test_r_reverses_the_current_field(cfg):
 
 
 async def test_sorting_by_speed(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -123,7 +123,7 @@ async def test_sorting_by_speed(cfg):
 
 
 async def test_sorting_by_progress(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -136,7 +136,7 @@ async def test_sorting_by_progress(cfg):
 
 async def test_the_order_survives_a_refresh(cfg):
     """The table is rebuilt from the daemon twice a second."""
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -148,7 +148,7 @@ async def test_the_order_survives_a_refresh(cfg):
 
 
 async def test_the_status_bar_names_the_order(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -161,7 +161,7 @@ async def test_the_status_bar_names_the_order(cfg):
 async def test_the_status_bar_names_queue_order_too(cfg):
     """A badge that appeared only once sorted would shift the bar under the
     reader on a keypress that changed nothing else."""
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -169,7 +169,7 @@ async def test_the_status_bar_names_queue_order_too(cfg):
 
 
 async def test_the_badge_updates_without_waiting_for_the_next_poll(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -181,7 +181,7 @@ async def test_the_badge_updates_without_waiting_for_the_next_poll(cfg):
 async def test_sorting_leaves_the_key_legend_alone(cfg):
     """The badge used to live under the list, which pushed the legend off the
     bottom of the screen."""
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test(size=(96, 12)) as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -196,7 +196,7 @@ async def test_sorting_leaves_the_key_legend_alone(cfg):
 
 
 async def test_the_legend_survives_a_filter_as_well(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test(size=(96, 12)) as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -212,7 +212,7 @@ async def test_the_legend_survives_a_filter_as_well(cfg):
 
 
 async def test_the_note_still_carries_only_the_filter(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -229,7 +229,7 @@ async def test_the_note_still_carries_only_the_filter(cfg):
 
 
 async def test_sorting_applies_to_the_filtered_list(cfg):
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -250,7 +250,7 @@ async def test_j_refuses_to_reorder_while_sorted(cfg):
     """Moving down the queue while sorted by size lands the row somewhere
     unrelated to where it was aimed."""
     client = MixedClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -263,7 +263,7 @@ async def test_j_refuses_to_reorder_while_sorted(cfg):
 
 async def test_j_reorders_again_once_back_in_queue_order(cfg):
     client = MixedClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -278,7 +278,7 @@ async def test_the_completed_tab_sorts_by_its_own_fields(cfg, state):
         history.append(
             {"name": name, "status": "ok", "bytes": size, "ts": 1, "path": ""}, log
         )
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -294,7 +294,7 @@ async def test_the_completed_tab_sorts_by_its_own_fields(cfg, state):
 async def test_the_completed_tab_never_offers_speed(cfg, state):
     log = state / "history.jsonl"
     history.append({"name": "a.iso", "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -308,7 +308,7 @@ async def test_the_completed_tab_never_offers_speed(cfg, state):
 async def test_each_tab_keeps_its_own_order(cfg, state):
     log = state / "history.jsonl"
     history.append({"name": "a.iso", "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
-    app = DlApp(cfg, MixedClient())
+    app = FirelinkApp(cfg, MixedClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -327,7 +327,7 @@ async def test_each_tab_keeps_its_own_order(cfg, state):
 async def test_the_completed_tab_rests_without_announcing_an_order(cfg, state):
     log = state / "history.jsonl"
     history.append({"name": "a.iso", "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")

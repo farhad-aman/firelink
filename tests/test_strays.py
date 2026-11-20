@@ -1,4 +1,4 @@
-"""Finding aria2 daemons dl cannot reach.
+"""Finding aria2 daemons firelink cannot reach.
 
 Scanning the port range older versions could roam to only finds them there.
 Looking for the processes themselves finds them wherever they ended up —
@@ -9,7 +9,7 @@ import subprocess
 
 import pytest
 
-from dl import daemon
+from firelink import daemon
 
 PS = (
     "2236 aria2c --enable-rpc --rpc-listen-all=false --rpc-listen-port=6813 --rpc-secret=x\n"

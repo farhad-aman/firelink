@@ -1,6 +1,6 @@
-from dl import spotresolve
-from dl.spotmatch import Candidate
-from dl.spotify import Track
+from firelink import spotresolve
+from firelink.spotmatch import Candidate
+from firelink.spotify import Track
 
 A = Track(title="A", artists=("X",), duration=200)
 B = Track(title="B", artists=("X",), duration=300)
@@ -59,7 +59,7 @@ def test_a_finder_that_raises_does_not_kill_the_batch():
 def test_a_throttle_is_waited_out_and_retried_rather_than_skipped():
     """The track is fine; the pace is not. Skipping it would lose a track to
     a problem that fixes itself in a second."""
-    from dl.spotmatch import Throttled
+    from firelink.spotmatch import Throttled
 
     tries = []
 
@@ -75,7 +75,7 @@ def test_a_throttle_is_waited_out_and_retried_rather_than_skipped():
 
 
 def test_a_throttle_that_never_clears_gives_up_without_hanging():
-    from dl.spotmatch import Throttled
+    from firelink.spotmatch import Throttled
 
     def always(track):
         raise Throttled("429")

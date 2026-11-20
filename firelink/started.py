@@ -17,7 +17,7 @@ def record(state: Path, gid: str, when: int | None = None) -> None:
 
     aria2 does not remember this: its status has no queued-at field, so the
     moment the gid is handed back is the only chance to learn it. Appended
-    rather than rewritten so the dashboard, `dl` and `dl watch` can all be
+    rather than rewritten so the dashboard, `firelink` and `firelink watch` can all be
     adding downloads at once without clobbering each other.
     """
     if not gid:

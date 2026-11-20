@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from dl import duplicates
-from dl.duplicates import BOTH, DOWNLOAD, OVERWRITE, PATH_ONLY, RENAME, SKIP, URL_ONLY
+from firelink import duplicates
+from firelink.duplicates import BOTH, DOWNLOAD, OVERWRITE, PATH_ONLY, RENAME, SKIP, URL_ONLY
 
 
 def rec(path, url, status="ok", **over):

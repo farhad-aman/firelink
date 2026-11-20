@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from dl import config
+from firelink import config
 
 
 @pytest.fixture
@@ -42,18 +42,29 @@ def isolate_state(tmp_path, monkeypatch):
     """Point the state directory at tmp_path for every test.
 
     The dashboard reads yt-dlp job files straight off disk, so without this a
-    test run sees the real ~/.local/state/dl and whatever is queued there.
+    test run sees the real ~/.local/state/firelink and whatever is queued there.
     """
-    from dl import config as config_module
-    from dl import daemon, hook, watch
-    from dl.tui import app as app_module
-    from dl.tui import preview, ytadd, ytflow
+    from firelink import config as config_module
+    from firelink import daemon, hook, watch
+    from firelink.tui import app as app_module
+    from firelink.tui import preview, ytadd, ytflow
 
     # Every module that binds the name, not just one: `from .config import
     # STATE_DIR` takes a copy, so patching the source leaves the copies pointing
     # at the real directory — which is how a test run came to take the lock off
     # a dashboard someone had open.
     where = tmp_path / "state"
+    from firelink import legacy
+
+    monkeypatch.setattr(legacy, "LEGACY_CONFIG_DIR", tmp_path / "legacy-config")
+    monkeypatch.setattr(legacy, "LEGACY_STATE_DIR", tmp_path / "legacy-state")
+
+    from firelink import __main__ as entry
+
+    config_dir = tmp_path / "config"
+    monkeypatch.setattr(config_module, "CONFIG_DIR", config_dir)
+    for module in (config_module, entry, app_module):
+        monkeypatch.setattr(module, "CONFIG_FILE", config_dir / "config.toml")
     for module in (config_module, daemon, hook, watch, app_module, preview, ytadd, ytflow):
         monkeypatch.setattr(module, "STATE_DIR", where, raising=False)
 
@@ -72,7 +83,7 @@ def guard_the_real_history():
     """
     from pathlib import Path
 
-    log = Path.home() / ".local" / "state" / "dl" / "history.jsonl"
+    log = Path.home() / ".local" / "state" / "firelink" / "history.jsonl"
     before = log.stat().st_size if log.exists() else -1
     yield
     after = log.stat().st_size if log.exists() else -1
@@ -88,7 +99,7 @@ def no_format_probe(monkeypatch):
     one would otherwise spawn yt-dlp and wait on the network. A test that
     wants an offer patches this again for itself.
     """
-    from dl import formats
+    from firelink import formats
 
     monkeypatch.setattr(formats, "probe", lambda *a, **k: None)
 

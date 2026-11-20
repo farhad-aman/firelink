@@ -1,6 +1,6 @@
 import pytest
 
-from dl import spotify, spotmatch
+from firelink import spotify, spotmatch
 
 pytestmark = pytest.mark.live
 

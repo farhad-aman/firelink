@@ -3,9 +3,9 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.widgets import Static, TextArea
 
-from dl import duplicates
-from dl.tui import modals as modals_module
-from dl.tui.modals import AddUrlModal, ConfirmModal, DeleteModal, DuplicateModal, SpeedLimitModal
+from firelink import duplicates
+from firelink.tui import modals as modals_module
+from firelink.tui.modals import AddUrlModal, ConfirmModal, DeleteModal, DuplicateModal, SpeedLimitModal
 
 
 class Host(App):

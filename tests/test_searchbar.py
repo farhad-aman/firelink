@@ -1,5 +1,5 @@
-from dl import theme
-from dl.tui.searchbar import empty_note, summary
+from firelink import theme
+from firelink.tui.searchbar import empty_note, summary
 
 AURORA = theme.THEMES["aurora"]
 MONO = theme.THEMES["mono"]

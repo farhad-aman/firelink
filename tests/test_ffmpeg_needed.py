@@ -7,8 +7,8 @@ separate video and audio track never happens.
 
 import pytest
 
-from dl import ytjob
-from dl.youtube import Choices
+from firelink import ytjob
+from firelink.youtube import Choices
 
 
 def choices(**over):
@@ -55,8 +55,8 @@ def test_the_advice_names_the_thing_to_install():
 
 async def test_the_youtube_flow_stops_before_fetching_anything(sandbox_cfg, monkeypatch, tmp_path):
     """It used to download the streams first and fail at the postprocess."""
-    from dl.tui import app as app_module
-    from dl.tui.app import DlApp
+    from firelink.tui import app as app_module
+    from firelink.tui.app import FirelinkApp
     from tests.test_app import FakeClient
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
@@ -65,7 +65,7 @@ async def test_the_youtube_flow_stops_before_fetching_anything(sandbox_cfg, monk
     monkeypatch.setattr(app_module.ytflow, "spawn", lambda *a, **k: spawned.append(a))
     notes = []
 
-    app = DlApp(sandbox_cfg, FakeClient())
+    app = FirelinkApp(sandbox_cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
@@ -79,13 +79,13 @@ async def test_the_youtube_flow_stops_before_fetching_anything(sandbox_cfg, monk
 
 
 async def test_the_flow_runs_normally_when_ffmpeg_is_there(sandbox_cfg, monkeypatch, tmp_path):
-    from dl.tui import app as app_module
-    from dl.tui.app import DlApp
+    from firelink.tui import app as app_module
+    from firelink.tui.app import FirelinkApp
     from tests.test_app import FakeClient
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     monkeypatch.setattr(ytjob, "ffmpeg_available", lambda: True)
-    app = DlApp(sandbox_cfg, FakeClient())
+    app = FirelinkApp(sandbox_cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept(["https://youtu.be/abc"])
@@ -99,11 +99,11 @@ def test_the_clipboard_watcher_skips_a_youtube_link_without_ffmpeg(
     """It would otherwise report the link as caught and quietly fail later."""
     from collections import deque
 
-    from dl import watch
+    from firelink import watch
 
     monkeypatch.setattr(ytjob, "ffmpeg_available", lambda: False)
     spawned = []
-    monkeypatch.setattr("dl.tui.ytflow.spawn", lambda *a, **k: spawned.append(a))
+    monkeypatch.setattr("firelink.tui.ytflow.spawn", lambda *a, **k: spawned.append(a))
     caught = watch.poll_once(
         "https://youtu.be/abc", deque(maxlen=5), sandbox_cfg, None
     )

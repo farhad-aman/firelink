@@ -1,10 +1,10 @@
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-from dl.spotify import Track
-from dl.spotmatch import Candidate, Scored
-from dl.spotresolve import Match
-from dl.tui.matchscreen import MatchScreen
+from firelink.spotify import Track
+from firelink.spotmatch import Candidate, Scored
+from firelink.spotresolve import Match
+from firelink.tui.matchscreen import MatchScreen
 
 
 class Host(App):
@@ -90,7 +90,7 @@ async def test_a_track_with_no_candidates_can_only_be_skipped():
 
 
 def test_the_hint_names_every_key_the_screen_answers_to():
-    from dl.tui import matchscreen
+    from firelink.tui import matchscreen
 
     for key in ("↑↓", "⏎", "s", "a", "esc"):
         assert key in matchscreen.MATCH_HINT

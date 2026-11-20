@@ -2,10 +2,10 @@
 
 A terminal download manager with the ergonomics of IDM or Folx: a queue you can
 pause and reorder, per-filetype destination folders, speed limits, and a live
-animated dashboard. The command is `dl`.
+animated dashboard. The command is `firelink`.
 
 `aria2c` does all the work — segmentation, resume, throttling, torrents — while
-`dl` is a stateless JSON-RPC client that owns only routing policy and
+`firelink` is a stateless JSON-RPC client that owns only routing policy and
 presentation. Nothing runs when you are not downloading.
 
 ## Install
@@ -18,7 +18,7 @@ brew install firelink
 
 Homebrew refuses to load formulae from a tap it has not been told to trust, so
 the middle line is needed once per machine. The install brings `aria2`,
-`ffmpeg` and `deno` with it. The command is `dl`.
+`ffmpeg` and `deno` with it. The command is `firelink`.
 
 ```bash
 brew upgrade firelink    # or just `brew upgrade` — it rides along
@@ -36,8 +36,8 @@ git clone https://github.com/farhad-aman/firelink.git
 cd firelink && make install
 ```
 
-That creates a private venv at `~/.local/share/dl/venv`, installs `textual` into
-it, and writes a `dl` shim to `~/.local/bin/dl`. System Python is untouched.
+That creates a private venv at `~/.local/share/firelink/venv`, installs `textual` into
+it, and writes a `firelink` shim to `~/.local/bin/firelink`. System Python is untouched.
 
 ```bash
 make test        # run the suite
@@ -46,27 +46,27 @@ make uninstall   # remove venv and shim
 
 Do not keep both installs. Homebrew's `bin` usually precedes `~/.local/bin` on
 PATH, so a tapped copy silently shadows the shim and edits appear to do
-nothing. `dl --version` and `which dl` say which one is answering.
+nothing. `firelink --version` and `which firelink` say which one is answering.
 
 ## Usage
 
 ```
-dl <url> [url...]        queue downloads and watch them live
-dl -f <file|->           queue URLs from a file or stdin
-dl -d <dir> <url>        override the destination for this download
-dl -p <url>              download through the sing-box proxy
-dl -H "Key: Value"       extra request header (repeatable)
-dl --no-preview <url>    queue and exit without the live preview
-dl                       open the TUI
+firelink <url> [url...]        queue downloads and watch them live
+firelink -f <file|->           queue URLs from a file or stdin
+firelink -d <dir> <url>        override the destination for this download
+firelink -p <url>              download through the sing-box proxy
+firelink -H "Key: Value"       extra request header (repeatable)
+firelink --no-preview <url>    queue and exit without the live preview
+firelink                       open the TUI
 
-dl ls                    list downloads
-dl history [n]           list finished downloads (--failed, --json)
-dl pause <gid|all>       dl resume <gid|all>      dl rm <gid>
-dl watch                 queue URLs as you copy them
-dl kill                  stop the daemon
+firelink ls                    list downloads
+firelink history [n]           list finished downloads (--failed, --json)
+firelink pause <gid|all>       firelink resume <gid|all>   firelink rm <gid>
+firelink watch                 queue URLs as you copy them
+firelink kill                  stop the daemon
 ```
 
-Before anything is queued, `dl` asks where to put each file. The routed folder is
+Before anything is queued, `firelink` asks where to put each file. The routed folder is
 preselected, so `⏎` accepts it; `↑` `↓` choose another, typing filters the list,
 and `⇥` completes the highlighted path into the input. `Esc` takes the default,
 `Ctrl-C` cancels the whole batch before anything is queued.
@@ -81,7 +81,7 @@ trailing slash lists everything one level down. Dotfiles stay hidden until the
 fragment you type starts with a dot. If nothing on disk matches, the last row
 offers to create the directory you typed.
 
-Then `dl` attaches a live preview showing just those files. Ctrl-C detaches — the
+Then `firelink` attaches a live preview showing just those files. Ctrl-C detaches — the
 downloads keep running — and the preview closes itself with a one-line summary
 per file when they finish.
 
@@ -94,33 +94,33 @@ its URL implied but turned out to be a different type.
 
 Inside the preview: `space` pause/resume, `l` limit, `o` open, `f` reveal
 in Finder, `d` delete, `↑` `↓` move, `Ctrl-C` detach. Adding, reordering, and the
-Completed tab are dashboard-only — run `dl` for those.
+Completed tab are dashboard-only — run `firelink` for those.
 
-`dl ls` shows the live queue and anything that failed. Finished downloads are
-in `dl history`, which is a file on disk and outlives the daemon; a removed one
+`firelink ls` shows the live queue and anything that failed. Finished downloads are
+in `firelink history`, which is a file on disk and outlives the daemon; a removed one
 is gone from both. The two never show the same download.
 
-Both take a name to match: `dl ls ubuntu`, `dl history ubuntu`, `dl history 50
+Both take a name to match: `firelink ls ubuntu`, `firelink history ubuntu`, `firelink history 50
 ubuntu`. Matching is the same as `/` in the dashboard — case-insensitive and
 Unicode-normalised — and a history query reads the whole log rather than the
 last twenty, so an old download is findable.
 
 ## One daemon
 
-There is one aria2 daemon on one port, and one dashboard. A second `dl` window
+There is one aria2 daemon on one port, and one dashboard. A second `firelink` window
 is refused rather than opened beside the first: both would act on the same
 queue from their own idea of what is in it.
 
-`dl <url>` normally attaches a live view of what it just queued. That view is a
+`firelink <url>` normally attaches a live view of what it just queued. That view is a
 dashboard too, so with one already open it stands down and prints a line
 instead — the download is queued either way, and the open window is where it
 appears.
 
-`dl watch` takes the lock as well. It has no window, but it runs until stopped
-and queues downloads while it does, which makes it a copy of dl rather than one
+`firelink watch` takes the lock as well. It has no window, but it runs until stopped
+and queues downloads while it does, which makes it a copy of firelink rather than one
 of its commands.
 
-Everything else — `dl ls`, `dl history`, `dl pause`, `dl rm` — is a short-lived
+Everything else — `firelink ls`, `firelink history`, `firelink pause`, `firelink rm` — is a short-lived
 client and runs whenever, including alongside an open dashboard.
 
 A lock left behind by something that was killed names a process that is gone,
@@ -128,11 +128,11 @@ and is taken over rather than honoured, so a crash cannot shut you out.
 
 Earlier versions moved to the next free port when theirs was busy, which is how
 a machine ends up carrying daemons nothing can reach — holding downloads that
-never appear anywhere. Starting `dl` now brings its own daemon back to the one
-port, carrying its queue across; `dl kill --strays` finds anything left over
+never appear anywhere. Starting `firelink` now brings its own daemon back to the one
+port, carrying its queue across; `firelink kill --strays` finds anything left over
 from before and stops it once you have seen what it is.
 
-If the port is genuinely held by something else, `dl` says so instead of
+If the port is genuinely held by something else, `firelink` says so instead of
 quietly starting somewhere new.
 
 Nothing in the environment can move any of this. The state directory, the
@@ -142,12 +142,12 @@ neither can see is the inconsistency all of this exists to prevent. The daemon
 tells its own hook where to write rather than exporting it.
 
 To run a genuinely separate copy, give it a separate machine: a container or a
-VM. That is a boundary dl does not have to know about.
+VM. That is a boundary firelink does not have to know about.
 
-`dl ls` prints fixed columns with no colour when piped, so `dl ls | grep paused`
+`firelink ls` prints fixed columns with no colour when piped, so `firelink ls | grep paused`
 works.
 
-`dl history` prints what has already finished, newest first, with the folder each
+`firelink history` prints what has already finished, newest first, with the folder each
 file landed in:
 
 ```
@@ -161,16 +161,16 @@ bare number caps how many. Only the leading columns are padded — padding a nam
 of double-width or right-to-left characters would land the rest of the line
 somewhere different on every row. It reads a file, so it never starts the daemon.
 
-`dl watch` catches URLs as you copy them, through the same routing, proxy and
+`firelink watch` catches URLs as you copy them, through the same routing, proxy and
 duplicate rules as everything else. Nothing there can prompt, so a duplicate is
 left alone with a note rather than guessed at, and a YouTube link is taken at
-best quality — run `dl <url>` when you want the choice.
+best quality — run `firelink <url>` when you want the choice.
 
 Magnet links and `.torrent` URLs work anywhere a URL does.
 
 ## Duplicates
 
-Once the destination is settled, `dl` checks whether the download would collide
+Once the destination is settled, `firelink` checks whether the download would collide
 with something and asks before writing anything. What it offers depends on what
 actually matches:
 
@@ -199,7 +199,7 @@ overwritten without someone saying so.
 
 ## Proxy
 
-`dl -p <url>` sends that download through the sing-box proxy. It is per-download:
+`firelink -p <url>` sends that download through the sing-box proxy. It is per-download:
 everything else in the queue keeps going out directly, so you can pull one
 blocked file through the proxy at full speed without tunnelling the rest.
 
@@ -258,14 +258,14 @@ routing, proxy and duplicate checks a fresh download gets, not a bare re-add.
 `y` copies its source URL and `Y` its path; both work on the Active tab too.
 
 A YouTube entry cannot go back to aria2, which would fetch the watch page as
-HTML, so `r` opens the quality picker and the destination picker the way `dl
+HTML, so `r` opens the quality picker and the destination picker the way `firelink
 <url>` does. Pasting a watch URL into `a` now does the same; a mixed batch
 sends the direct URLs to aria2 first and asks about the YouTube ones after,
 so two questions never stack on one another.
 
 ## Playlists and channels
 
-A playlist or channel address expands into its videos: `dl` lists what is in
+A playlist or channel address expands into its videos: `firelink` lists what is in
 there, says how many, and waits. Nothing is queued until you agree, because a
 channel can hold thousands.
 
@@ -308,9 +308,9 @@ about that download, not a request to join the queue.
 
 ## Spotify
 
-    dl https://open.spotify.com/track/...
-    dl https://open.spotify.com/album/...
-    dl https://open.spotify.com/playlist/...
+    firelink https://open.spotify.com/track/...
+    firelink https://open.spotify.com/album/...
+    firelink https://open.spotify.com/playlist/...
 
 **The audio comes from YouTube, not Spotify.** Spotify's own streams are
 protected and no download tool can read them — yt-dlp's extractor for these
@@ -344,7 +344,7 @@ The public Spotify page returns at most 50 tracks and does not say how many it
 held, so firelink warns you when a playlist comes back with exactly 50. To read
 longer ones, create a free app at
 [developer.spotify.com](https://developer.spotify.com) and put its two values
-in `~/.config/dl/config.toml`, or under Settings → Spotify:
+in `~/.config/firelink/config.toml`, or under Settings → Spotify:
 
     [spotify]
     client_id     = "..."
@@ -408,16 +408,16 @@ Saving rewrites only the values you touched — the comments, blank lines and
 column alignment of your `config.toml` all survive.
 
 If `config.toml` has a syntax error the screen refuses to open rather than
-overwrite it. `dl` runs on defaults until the file parses, and saving those
+overwrite it. `firelink` runs on defaults until the file parses, and saving those
 defaults over your file would destroy what you wrote.
 
 Everything remains editable by hand; the screen is a second way in, not a
-replacement. A running `dl` will not notice edits made in an editor, though —
+replacement. A running `firelink` will not notice edits made in an editor, though —
 restart it, or make the change from the screen.
 
 ## Configuration
 
-`~/.config/dl/config.toml`, written with commented defaults on first run.
+`~/.config/firelink/config.toml`, written with commented defaults on first run.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -452,13 +452,13 @@ unreachable at every hostname it answers on. `*.` matches subdomains only,
 as it does under `[domains]`.
 
 Because the rule travels with the URL rather than the command line, retries,
-the dashboard's add box and `dl watch` all proxy the same downloads `dl -p`
+the dashboard's add box and `firelink watch` all proxy the same downloads `firelink -p`
 would.
 
-Before a YouTube download starts, `dl` asks yt-dlp what the link actually is —
+Before a YouTube download starts, `firelink` asks yt-dlp what the link actually is —
 the title, the size, and the exact filename it would write. That answer is what
 the duplicate check compares against, and over a proxy it can take anywhere from
-twenty seconds to a couple of minutes. If it never arrives, `dl` says so and asks
+twenty seconds to a couple of minutes. If it never arrives, `firelink` says so and asks
 rather than queueing blind, because a download queued without it would be
 silently declined by yt-dlp when the file is already there.
 
@@ -484,7 +484,7 @@ file, though — that file is as private as its permissions make it.
 
 ```toml
 [hooks]
-on_complete = "~/bin/dl-done.sh"
+on_complete = "~/bin/firelink-done.sh"
 ```
 
 ```sh
@@ -500,7 +500,7 @@ containing `;` or `$(...)` arrives as text rather than as something to execute.
 
 A hook that fails or exceeds `timeout` never fails the download: the bytes
 arrived, and what you asked to happen afterwards is a separate thing that can go
-wrong. Failures go to `~/.local/state/dl/hook.log` and, if notifications are on, a banner.
+wrong. Failures go to `~/.local/state/firelink/hook.log` and, if notifications are on, a banner.
 
 Add a category in three lines — the icon and colour flow into the TUI
 automatically:
@@ -529,24 +529,36 @@ models 🧠, code 💻.
 
 | Path | Purpose |
 |---|---|
-| `~/.config/dl/config.toml` | your settings |
-| `~/.local/state/dl/session` | queue persistence across restarts |
-| `~/.local/state/dl/history.jsonl` | completed downloads, append-only |
-| `~/.local/state/dl/rpc.secret` | RPC token, mode 0600 |
-| `~/.local/state/dl/port` | chosen RPC port |
-| `~/.local/state/dl/yt/*.json` | yt-dlp job records, swept on dashboard start |
-| `~/.local/state/dl/yt/*.part` | yt-dlp fragments, removed with their job |
-| `~/.local/state/dl/hooks/*.sh` | generated aria2 completion hooks |
-| `~/.local/state/dl/aria2.log` | aria2 errors |
+| `~/.config/firelink/config.toml` | your settings |
+| `~/.local/state/firelink/session` | queue persistence across restarts |
+| `~/.local/state/firelink/history.jsonl` | completed downloads, append-only |
+| `~/.local/state/firelink/rpc.secret` | RPC token, mode 0600 |
+| `~/.local/state/firelink/port` | chosen RPC port |
+| `~/.local/state/firelink/yt/*.json` | yt-dlp job records, swept on dashboard start |
+| `~/.local/state/firelink/yt/*.part` | yt-dlp fragments, removed with their job |
+| `~/.local/state/firelink/hooks/*.sh` | generated aria2 completion hooks |
+| `~/.local/state/firelink/aria2.log` | aria2 errors |
 
 RPC binds `127.0.0.1` only and always requires the secret, so no other local
 process can queue downloads to arbitrary paths.
+
+### Coming from `dl`
+
+Before 0.5 the command was `dl`, with its files in `~/.config/dl` and
+`~/.local/state/dl`. The first `firelink` run moves both folders to the new
+names, so settings, history and the queue carry over. A running `dl` daemon is
+stopped first and its queue resumes under `firelink`. If an old `dl` window is
+still open, `firelink` asks you to close it and run again. A folder that
+already exists at the new name is never overwritten.
+
+From a source install, `make install` also removes the old `~/.local/bin/dl`
+shim and its venv in `~/.local/share/dl`.
 
 ## Troubleshooting
 
 **`aria2c not found`** — `brew install aria2`.
 
-**Daemon seems stuck** — `dl kill`, then any `dl` command restarts it. The queue
+**Daemon seems stuck** — `firelink kill`, then any `firelink` command restarts it. The queue
 survives in `session`.
 
 **`aria2c did not answer within 5s`** — the printed log tail says why. If ports
@@ -556,12 +568,12 @@ survives in `session`.
 session file is quarantined and the daemon restarts empty; the old file is kept
 for inspection.
 
-**Broken config** — `dl` prints the TOML error with its line number and runs on
+**Broken config** — `firelink` prints the TOML error with its line number and runs on
 defaults rather than refusing to start. A typo never blocks a download.
 
 **YouTube downloads refuse to start** — they need ffmpeg. YouTube serves video
 and audio as separate streams above 360p, and combining them is ffmpeg's job,
-as are audio-only downloads and subtitles. `dl` checks before fetching
+as are audio-only downloads and subtitles. `firelink` checks before fetching
 anything: without the check yt-dlp downloads the streams and fails at the last
 step, leaving a `.webm` where the file you asked for should be.
 `brew install ffmpeg`.
@@ -589,10 +601,10 @@ The suite covers behaviour; these are the things only an eye can check.
 - [ ] `y` on a finished download puts its URL on the clipboard
 - [ ] `r` on a finished YouTube entry opens the quality picker, not an aria2 add
 - [ ] A playlist URL shows its real name and count before queuing anything
-- [ ] `NO_COLOR=1 dl` emits no colour
+- [ ] `NO_COLOR=1 firelink` emits no colour
 - [ ] Resize below 80, 66, and 50 columns — layout degrades, never scrolls sideways
 - [ ] macOS notification appears on completion
-- [ ] Ctrl-C in the TUI leaves downloads running (`dl ls` confirms)
+- [ ] Ctrl-C in the TUI leaves downloads running (`firelink ls` confirms)
 - [ ] All four themes look correct
 
 ## Releasing
@@ -608,7 +620,7 @@ gh run watch
 ```
 
 The workflow refuses a tag that disagrees with `pyproject.toml`, so
-`dl --version` can never lie about which release a copy is.
+`firelink --version` can never lie about which release a copy is.
 
 If the Action is broken, the same six steps by hand:
 

@@ -1,4 +1,4 @@
-"""`dl ls --json`, to match `dl history --json`.
+"""`firelink ls --json`, to match `firelink history --json`.
 
 One object per line, so it pipes into jq a record at a time and stays greppable
 the way the plain listing is.
@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from dl import cli, config
+from firelink import cli, config
 
 
 @pytest.fixture
@@ -138,6 +138,6 @@ def test_the_plain_listing_is_unchanged(cfg, capsys):
 
 
 def test_ls_accepts_the_json_flag_on_the_command_line():
-    from dl import __main__ as entry
+    from firelink import __main__ as entry
 
     assert "--json" in entry.SUBCOMMAND_FLAGS["ls"]

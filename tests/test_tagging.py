@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 from mutagen.mp4 import MP4
 
-from dl import tagging
-from dl.spotify import Track
+from firelink import tagging
+from firelink.spotify import Track
 
 TRACK = Track(
     title="Superhero",

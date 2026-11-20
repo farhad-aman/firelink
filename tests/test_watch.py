@@ -2,7 +2,7 @@ from collections import deque
 
 import pytest
 
-from dl import config, watch
+from firelink import config, watch
 
 
 @pytest.fixture
@@ -92,7 +92,7 @@ def status(path, url, gid="g1"):
 
 
 def test_a_caught_url_on_a_listed_domain_is_proxied(cfg):
-    """`dl watch` has no -p to pass, so without domain rules a filtered host is
+    """`firelink watch` has no -p to pass, so without domain rules a filtered host is
     caught and then fails."""
     client = FakeClient()
     proxied = config.replace(cfg, proxy_domains=("e.com",))
@@ -129,8 +129,8 @@ def test_a_url_already_downloading_is_not_queued_again(cfg):
 def test_a_youtube_link_goes_to_yt_dlp_not_aria2(cfg, monkeypatch, tmp_path):
     """aria2 would fetch the watch page itself and save it as HTML."""
     spawned = []
-    monkeypatch.setattr("dl.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
-    monkeypatch.setattr("dl.ytrun.probe", lambda job, timeout=None: ("A Clip", str(tmp_path / "A Clip.mp4"), 99))
+    monkeypatch.setattr("firelink.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
+    monkeypatch.setattr("firelink.ytrun.probe", lambda job, timeout=None: ("A Clip", str(tmp_path / "A Clip.mp4"), 99))
     monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     client = FakeClient()
@@ -142,8 +142,8 @@ def test_a_youtube_link_goes_to_yt_dlp_not_aria2(cfg, monkeypatch, tmp_path):
 
 def test_a_caught_youtube_link_on_a_listed_domain_is_proxied(cfg, monkeypatch, tmp_path):
     spawned = []
-    monkeypatch.setattr("dl.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
-    monkeypatch.setattr("dl.ytrun.probe", lambda job, timeout=None: ("A Clip", str(tmp_path / "A Clip.mp4"), 99))
+    monkeypatch.setattr("firelink.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
+    monkeypatch.setattr("firelink.ytrun.probe", lambda job, timeout=None: ("A Clip", str(tmp_path / "A Clip.mp4"), 99))
     monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     proxied = config.replace(cfg, proxy_domains=("youtu.be",))
@@ -153,10 +153,10 @@ def test_a_caught_youtube_link_on_a_listed_domain_is_proxied(cfg, monkeypatch, t
 
 def test_a_youtube_video_already_on_disk_is_not_fetched_again(cfg, monkeypatch, tmp_path):
     spawned = []
-    monkeypatch.setattr("dl.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
+    monkeypatch.setattr("firelink.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
     landed = tmp_path / "A Clip.mp4"
     landed.write_bytes(b"already here")
-    monkeypatch.setattr("dl.ytrun.probe", lambda job, timeout=None: ("A Clip", str(landed), 99))
+    monkeypatch.setattr("firelink.ytrun.probe", lambda job, timeout=None: ("A Clip", str(landed), 99))
     monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     assert watch.poll_once("https://youtu.be/abc", deque(maxlen=20), cfg, FakeClient()) is False
@@ -174,16 +174,16 @@ def test_a_youtube_link_without_yt_dlp_says_so(cfg, monkeypatch, capsys):
 def test_a_youtube_link_it_cannot_check_is_left_alone(cfg, monkeypatch, capsys):
     """Queuing blind would let yt-dlp find the file already there and do
     nothing, which is the silence this check exists to remove."""
-    from dl import ytrun
+    from firelink import ytrun
 
     spawned = []
-    monkeypatch.setattr("dl.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
+    monkeypatch.setattr("firelink.tui.ytflow.spawn", lambda job, state=None, cap=0: spawned.append(job))
     monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
 
     def die(job, timeout=None):
         raise ytrun.ProbeFailed("timed out after 180s")
 
-    monkeypatch.setattr("dl.ytrun.probe", die)
+    monkeypatch.setattr("firelink.ytrun.probe", die)
 
     assert watch.poll_once("https://youtu.be/abc", deque(maxlen=20), cfg, FakeClient()) is False
     assert spawned == []

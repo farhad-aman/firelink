@@ -3,8 +3,8 @@ import time
 
 import pytest
 
-from dl import history, theme
-from dl.tui.completed import CompletedTable, record_path, render_entry
+from firelink import history, theme
+from firelink.tui.completed import CompletedTable, record_path, render_entry
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_render_entry_dates_an_older_download(th):
 
 
 def test_render_entry_shows_a_dash_when_the_record_has_no_timestamp(th):
-    from dl.format import DASH
+    from firelink.format import DASH
 
     assert DASH in render_entry(record(ts=0), th, selected=False, now=int(time.time()))
 
@@ -152,14 +152,14 @@ def test_remove_entry_keeps_the_file_valid_jsonl(tmp_path):
 
 
 def test_a_proxied_record_is_badged(th):
-    from dl.tui.completed import render_entry
+    from firelink.tui.completed import render_entry
 
     record = {"name": "a.iso", "status": "ok", "bytes": 10, "ts": 1, "path": "", "proxy": True}
     assert "🌐" in render_entry(record, th, selected=False, now=2)
 
 
 def test_a_direct_record_is_not_badged(th):
-    from dl.tui.completed import render_entry
+    from firelink.tui.completed import render_entry
 
     record = {"name": "a.iso", "status": "ok", "bytes": 10, "ts": 1, "path": ""}
     assert "🌐" not in render_entry(record, th, selected=False, now=2)

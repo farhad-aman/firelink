@@ -1,4 +1,4 @@
-"""What `dl ls` shows, and what a removal leaves behind.
+"""What `firelink ls` shows, and what a removal leaves behind.
 
 aria2.remove does not erase a download: it moves it to the stopped list with
 status "removed", where it stays until the daemon restarts. Printing the
@@ -8,7 +8,7 @@ the daemon.
 
 import pytest
 
-from dl import cli
+from firelink import cli
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ def test_a_removed_download_is_not_listed(cfg, capsys):
 
 
 def test_a_finished_download_is_not_listed(cfg, capsys):
-    """It is in dl history, which is the lasting record."""
+    """It is in firelink history, which is the lasting record."""
     client = Client(stopped=[entry("g1", "complete", "done.iso")])
     cli.cmd_ls(cfg, client, use_color=False)
     assert "done.iso" not in capsys.readouterr().out
@@ -116,7 +116,7 @@ def test_removing_also_purges_the_result(cfg):
 def test_removing_reports_success_even_if_the_purge_is_refused(cfg):
     """aria2 refuses to purge a result that is not there yet. The download is
     still gone, which is what was asked for."""
-    from dl.rpc import Aria2Error
+    from firelink.rpc import Aria2Error
 
     class Fussy(Client):
         def remove_download_result(self, gid):

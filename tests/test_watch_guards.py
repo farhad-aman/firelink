@@ -9,9 +9,9 @@ from collections import deque
 
 import pytest
 
-from dl import config as config_module
-from dl import watch, ytjob
-from dl.rpc import Aria2Error, Aria2Unreachable
+from firelink import config as config_module
+from firelink import watch, ytjob
+from firelink.rpc import Aria2Error, Aria2Unreachable
 
 URL = "https://e.com/a.iso"
 
@@ -110,7 +110,7 @@ def test_the_watcher_keeps_going_after_a_refusal(cfg):
 
 def test_a_caught_youtube_link_honours_the_concurrency_cap(cfg, tmp_path, monkeypatch):
     """Ten copied links used to start ten supervisors at once."""
-    from dl.tui import ytflow
+    from firelink.tui import ytflow
 
     seen = {}
 
@@ -122,7 +122,7 @@ def test_a_caught_youtube_link_honours_the_concurrency_cap(cfg, tmp_path, monkey
     monkeypatch.setattr(ytjob, "ffmpeg_available", lambda: True)
     monkeypatch.setattr(watch.ytdlp, "available", lambda: True)
     monkeypatch.setattr(
-        watch.ytrun if hasattr(watch, "ytrun") else __import__("dl.ytrun", fromlist=["x"]),
+        watch.ytrun if hasattr(watch, "ytrun") else __import__("firelink.ytrun", fromlist=["x"]),
         "probe",
         lambda job, timeout: ("A title", "", 0),
     )
@@ -132,15 +132,15 @@ def test_a_caught_youtube_link_honours_the_concurrency_cap(cfg, tmp_path, monkey
 
 async def test_the_dashboard_reports_an_unwritable_destination(sandbox_cfg, tmp_path, monkeypatch):
     """It used to die on the bare mkdir, while every other door checked first."""
-    from dl.tui import app as app_module
-    from dl.tui.app import DlApp
+    from firelink.tui import app as app_module
+    from firelink.tui.app import FirelinkApp
     from textual.widgets import Button, TextArea
     from tests.test_app import FakeClient
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path / "state")
     narrow, blocked = locked_cfg(sandbox_cfg, tmp_path)
     notes = []
-    app = DlApp(narrow, FakeClient())
+    app = FirelinkApp(narrow, FakeClient())
     try:
         async with app.run_test() as pilot:
             await pilot.pause()

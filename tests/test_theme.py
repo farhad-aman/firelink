@@ -1,6 +1,6 @@
 import pytest
 
-from dl import config, theme
+from firelink import config, theme
 
 
 @pytest.fixture

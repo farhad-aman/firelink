@@ -7,8 +7,8 @@ tab that offers delete and re-download.
 
 import pytest
 
-from dl import history, sort, theme
-from dl.tui.completed import CompletedTable
+from firelink import history, sort, theme
+from firelink.tui.completed import CompletedTable
 
 
 def record(name: str, ts: int) -> dict:

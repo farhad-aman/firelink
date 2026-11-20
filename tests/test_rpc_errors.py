@@ -11,7 +11,7 @@ import urllib.error
 
 import pytest
 
-from dl.rpc import Aria2, Aria2Error, Aria2Unreachable
+from firelink.rpc import Aria2, Aria2Error, Aria2Unreachable
 
 
 def http_error(code: int, body: bytes) -> urllib.error.HTTPError:
@@ -28,7 +28,7 @@ def raising(exc):
 
 
 def rpc_error(code: int, message: str) -> bytes:
-    return json.dumps({"jsonrpc": "2.0", "id": "dl-1", "error": {"code": code, "message": message}}).encode()
+    return json.dumps({"jsonrpc": "2.0", "id": "firelink-1", "error": {"code": code, "message": message}}).encode()
 
 
 @pytest.fixture

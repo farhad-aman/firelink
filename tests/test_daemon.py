@@ -2,7 +2,7 @@ import stat
 
 import pytest
 
-from dl import config, daemon
+from firelink import config, daemon
 
 
 @pytest.fixture
@@ -41,13 +41,13 @@ def test_hook_shims_are_executable_and_exec_the_venv(tmp_path):
         body = path.read_text()
         assert body.startswith("#!/bin/sh")
         assert "/opt/venv/bin/python" in body
-        assert f"-m dl.hook {mode}" in body
+        assert f"-m firelink.hook {mode}" in body
         assert '"$@"' in body
         assert stat.S_IMODE(path.stat().st_mode) == 0o755
 
 
 def test_hook_shims_pass_the_state_dir_as_an_argument(tmp_path):
-    """Not through the environment: nothing there can move dl's state, so the
+    """Not through the environment: nothing there can move firelink's state, so the
     daemon has to tell its own hook where it keeps things."""
     complete, _ = daemon.write_hook_shims(tmp_path, "/opt/venv/bin/python")
     body = complete.read_text()
@@ -140,7 +140,7 @@ def test_bindable_is_false_while_a_socket_holds_the_port():
 
 
 def test_a_held_port_is_reported_rather_than_worked_around(tmp_path, cfg, monkeypatch):
-    """dl used to move to the next free port. That is how daemons nothing
+    """firelink used to move to the next free port. That is how daemons nothing
     could reach ended up running beside the real one."""
     monkeypatch.setattr(daemon.shutil, "which", lambda _: "/usr/bin/aria2c")
     monkeypatch.setattr(daemon, "_probe", lambda port, secret: "free")

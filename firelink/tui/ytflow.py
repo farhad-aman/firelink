@@ -83,7 +83,7 @@ class YouTubeSetupApp(App):
 
 CHECKING = "  asking YouTube what this is…"
 SETTLED = ("complete", "error", "cancelled")
-WATCH_HINT = "^C detach — the download keeps going    d delete in `dl`"
+WATCH_HINT = "^C detach — the download keeps going    d delete in `firelink`"
 
 
 class YouTubeWatchApp(App):
@@ -148,7 +148,7 @@ def summarise(jobs: list[dict], icons: bool = True) -> list[str]:
         elif job.get("status") == "error":
             lines.append(f"  {glyph('❌', icons)} {name}   {job.get('error', 'failed')}")
         else:
-            lines.append(f"  {glyph('⏳', icons)} {name}   still downloading — `dl` to watch")
+            lines.append(f"  {glyph('⏳', icons)} {name}   still downloading — `firelink` to watch")
     return lines
 
 
@@ -167,9 +167,9 @@ def run_youtube(
     """
     where = state or STATE_DIR
     if instance.holder(where):
-        return ["  dl is already running — press a in that window to add it"], True
+        return ["  firelink is already running — press a in that window to add it"], True
     if not instance.acquire(where):
-        return ["  dl is already running"], True
+        return ["  firelink is already running"], True
     try:
         return _run_youtube(cfg, urls, proxy, where)
     finally:

@@ -1,6 +1,6 @@
 import sys
 
-from dl import install
+from firelink import install
 
 
 def test_a_cellar_prefix_is_a_homebrew_install(monkeypatch):
@@ -11,7 +11,7 @@ def test_a_cellar_prefix_is_a_homebrew_install(monkeypatch):
 
 
 def test_a_venv_prefix_is_not_a_homebrew_install(monkeypatch):
-    monkeypatch.setattr(sys, "prefix", "/Users/someone/.local/share/dl/venv")
+    monkeypatch.setattr(sys, "prefix", "/Users/someone/.local/share/firelink/venv")
     assert install.by_homebrew() is False
 
 
@@ -33,7 +33,7 @@ def test_the_version_comes_from_package_metadata():
 
 def test_a_package_without_metadata_reports_unknown(monkeypatch):
     """Running out of a checkout with nothing pip-installed. Saying "unknown"
-    beats raising in the middle of `dl --version`."""
+    beats raising in the middle of `firelink --version`."""
     from importlib import metadata
 
     def missing(_name):

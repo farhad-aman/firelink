@@ -4,8 +4,8 @@ import os
 
 import pytest
 
-from dl import instance
-from dl.tui import preview as preview_module
+from firelink import instance
+from firelink.tui import preview as preview_module
 from tests.test_app import FakeClient
 
 
@@ -93,7 +93,7 @@ def test_another_process_cannot_start_a_dashboard_while_a_preview_is_up(
 def test_the_youtube_flow_refuses_while_a_dashboard_is_open(cfg, tmp_path, monkeypatch, other_pid):
     """It opens a full screen and nothing is queued yet, so it points at the
     window that can add it rather than standing down silently."""
-    from dl.tui import ytflow
+    from firelink.tui import ytflow
 
     instance.acquire(tmp_path, pid=other_pid)
     monkeypatch.setattr(ytflow, "_run_youtube", lambda *a: pytest.fail("opened anyway"))
@@ -103,7 +103,7 @@ def test_the_youtube_flow_refuses_while_a_dashboard_is_open(cfg, tmp_path, monke
 
 
 def test_the_youtube_flow_runs_when_nothing_holds_the_lock(cfg, tmp_path, monkeypatch):
-    from dl.tui import ytflow
+    from firelink.tui import ytflow
 
     monkeypatch.setattr(ytflow, "_run_youtube", lambda *a: (["ok"], False))
     lines, cancelled = ytflow.run_youtube(cfg, ["https://youtu.be/abc"], state=tmp_path)
@@ -112,7 +112,7 @@ def test_the_youtube_flow_runs_when_nothing_holds_the_lock(cfg, tmp_path, monkey
 
 
 def test_the_youtube_flow_gives_the_lock_back_after_a_crash(cfg, tmp_path, monkeypatch):
-    from dl.tui import ytflow
+    from firelink.tui import ytflow
 
     def boom(*a):
         raise RuntimeError("crash")

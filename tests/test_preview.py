@@ -1,14 +1,14 @@
 import pytest
 
-from dl import history
-from dl.rpc import Aria2Unreachable
-from dl.tui.modals import DuplicateModal
-from dl.tui.preview import PreviewApp, Request, summarise
+from firelink import history
+from firelink.rpc import Aria2Unreachable
+from firelink.tui.modals import DuplicateModal
+from firelink.tui.preview import PreviewApp, Request, summarise
 
 
 def seed_history(monkeypatch, tmp_path, record):
     """Point the app's history log inside tmp_path before writing to it."""
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     history.append(record, tmp_path / "history.jsonl")
@@ -119,7 +119,7 @@ def test_summarise_running_collapses_into_one_trailing_line():
     lines = summarise([result(status="active"), result(name="b.mkv", status="waiting")])
     assert len(lines) == 1
     assert "2 still downloading" in lines[0]
-    assert "dl ls" in lines[0]
+    assert "firelink ls" in lines[0]
 
 
 def test_summarise_singular_wording_for_one_running():
@@ -402,7 +402,7 @@ async def test_a_clean_target_never_opens_the_duplicate_prompt(cfg, tmp_path):
 
 
 async def test_an_existing_file_prompts_and_skip_is_recorded(cfg, tmp_path):
-    from dl.duplicates import SKIP
+    from firelink.duplicates import SKIP
 
     target = tmp_path / "default" / "movie.mkv"
     target.parent.mkdir(parents=True)
@@ -426,7 +426,7 @@ async def test_an_existing_file_prompts_and_skip_is_recorded(cfg, tmp_path):
 
 
 async def test_overwrite_is_recorded_for_an_existing_file(cfg, tmp_path):
-    from dl.duplicates import OVERWRITE
+    from firelink.duplicates import OVERWRITE
 
     target = tmp_path / "default" / "movie.mkv"
     target.parent.mkdir(parents=True)
@@ -450,7 +450,7 @@ async def test_overwrite_is_recorded_for_an_existing_file(cfg, tmp_path):
 
 async def test_a_url_only_collision_offers_no_overwrite(cfg, tmp_path, monkeypatch):
     """Nothing is at the new path, so there is nothing to overwrite."""
-    from dl.duplicates import DOWNLOAD, OVERWRITE
+    from firelink.duplicates import DOWNLOAD, OVERWRITE
 
     elsewhere = tmp_path / "old" / "movie.mkv"
     elsewhere.parent.mkdir(parents=True)
@@ -561,7 +561,7 @@ async def test_cancelling_stops_the_remaining_pickers(cfg, tmp_path):
 
 
 def stub_app(monkeypatch, *, cancelled, results):
-    from dl.tui import preview as preview_module
+    from firelink.tui import preview as preview_module
 
     class Stub:
         def __init__(self, *a, **k):

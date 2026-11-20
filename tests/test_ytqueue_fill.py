@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from dl import youtube, ytjob, ytqueue
+from firelink import youtube, ytjob, ytqueue
 
 
 @pytest.fixture
@@ -118,7 +118,7 @@ def test_fill_on_a_missing_directory_is_quiet(tmp_path, spawned):
 
 def test_a_departing_supervisor_reclaims_every_free_slot(yard, spawned):
     """hand_over used to start exactly one, however many slots had come free."""
-    from dl import ytrun
+    from firelink import ytrun
 
     leaving = queue_job(yard, "https://youtu.be/leaving")
     ytqueue.hold_slot(yard / "yt", leaving["id"])
@@ -135,9 +135,9 @@ def test_a_departing_supervisor_reclaims_every_free_slot(yard, spawned):
 async def test_the_dashboard_starts_a_stranded_queue_when_it_opens(
     sandbox_cfg, tmp_path, monkeypatch, spawned
 ):
-    """The reboot case, end to end: open dl and the queue moves again."""
-    from dl.tui import app as app_module
-    from dl.tui.app import DlApp
+    """The reboot case, end to end: open firelink and the queue moves again."""
+    from firelink.tui import app as app_module
+    from firelink.tui.app import FirelinkApp
     from tests.test_app import FakeClient
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
@@ -145,7 +145,7 @@ async def test_the_dashboard_starts_a_stranded_queue_when_it_opens(
     job = ytjob.new_job("https://youtu.be/stranded", tmp_path / "dest", youtube.DEFAULTS)
     ytjob.save(tmp_path / "yt", job)
 
-    app = DlApp(sandbox_cfg, FakeClient())
+    app = FirelinkApp(sandbox_cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
     assert spawned == [job["id"]]
@@ -154,8 +154,8 @@ async def test_the_dashboard_starts_a_stranded_queue_when_it_opens(
 async def test_the_preview_does_not_start_other_peoples_downloads(
     sandbox_cfg, tmp_path, monkeypatch, spawned
 ):
-    from dl.tui import app as app_module
-    from dl.tui.preview import PreviewApp
+    from firelink.tui import app as app_module
+    from firelink.tui.preview import PreviewApp
     from tests.test_app import FakeClient
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)

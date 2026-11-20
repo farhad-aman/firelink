@@ -62,7 +62,7 @@ class Aria2:
     def _call(self, method: str, *params):
         payload = {
             "jsonrpc": "2.0",
-            "id": f"dl-{next(self._ids)}",
+            "id": f"firelink-{next(self._ids)}",
             "method": method,
             "params": [f"token:{self.secret}", *params],
         }

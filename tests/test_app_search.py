@@ -1,10 +1,10 @@
 import pytest
 from textual.widgets import Input
 
-from dl import history
-from dl.tui import app as app_module
-from dl.tui.app import DlApp
-from dl.tui.searchbar import INPUT_ID
+from firelink import history
+from firelink.tui import app as app_module
+from firelink.tui.app import FirelinkApp
+from firelink.tui.searchbar import INPUT_ID
 from tests.test_app import FakeClient
 
 
@@ -56,7 +56,7 @@ class LongClient(FakeClient):
 async def test_down_moves_the_selection_when_the_list_overflows_the_screen(cfg):
     """The body is a VerticalScroll. Focused, it eats the arrow keys and pans
     the page instead of letting the dashboard move its cursor."""
-    app = DlApp(cfg, LongClient())
+    app = FirelinkApp(cfg, LongClient())
     async with app.run_test(size=(100, 20)) as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -68,7 +68,7 @@ async def test_down_moves_the_selection_when_the_list_overflows_the_screen(cfg):
 
 
 async def test_up_moves_the_selection_back(cfg):
-    app = DlApp(cfg, LongClient())
+    app = FirelinkApp(cfg, LongClient())
     async with app.run_test(size=(100, 20)) as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -83,7 +83,7 @@ async def test_up_moves_the_selection_back(cfg):
 
 async def test_the_view_follows_the_cursor_past_the_bottom_edge(cfg):
     """Moving the cursor is useless if the row it lands on is off screen."""
-    app = DlApp(cfg, LongClient())
+    app = FirelinkApp(cfg, LongClient())
     async with app.run_test(size=(100, 20)) as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -97,7 +97,7 @@ async def test_the_view_follows_the_cursor_past_the_bottom_edge(cfg):
 
 
 async def test_the_view_follows_the_cursor_back_to_the_top(cfg):
-    app = DlApp(cfg, LongClient())
+    app = FirelinkApp(cfg, LongClient())
     async with app.run_test(size=(100, 20)) as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -119,7 +119,7 @@ async def test_the_completed_tab_moves_its_cursor_too(cfg, state):
         history.append(
             {"name": f"done-{i:02d}.iso", "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log
         )
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test(size=(100, 20)) as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -133,7 +133,7 @@ async def test_the_completed_tab_moves_its_cursor_too(cfg, state):
 
 
 async def test_arrows_still_move_the_cursor_while_a_filter_is_on(cfg):
-    app = DlApp(cfg, LongClient())
+    app = FirelinkApp(cfg, LongClient())
     async with app.run_test(size=(100, 20)) as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -148,7 +148,7 @@ async def test_arrows_still_move_the_cursor_while_a_filter_is_on(cfg):
 
 
 async def test_slash_opens_the_box_and_focuses_it(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         assert app.searching is False
@@ -159,7 +159,7 @@ async def test_slash_opens_the_box_and_focuses_it(cfg):
 
 
 async def test_typing_filters_the_active_table_live(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -170,7 +170,7 @@ async def test_typing_filters_the_active_table_live(cfg):
 
 
 async def test_the_filter_survives_committing_with_enter(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "iso")
@@ -183,7 +183,7 @@ async def test_the_filter_survives_committing_with_enter(cfg):
 
 
 async def test_escape_clears_the_filter_and_closes_the_box(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "iso")
@@ -198,7 +198,7 @@ async def test_escape_clears_the_filter_and_closes_the_box(cfg):
 async def test_escape_clears_a_filter_committed_with_enter(cfg):
     """The box carries its own escape binding, and enter unmounts the box. Only
     testing escape while it is open leaves the committed filter unclearable."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "iso")
@@ -217,7 +217,7 @@ async def test_escape_clears_a_committed_filter_on_the_completed_tab(cfg, state)
     log = state / "history.jsonl"
     for name in ("ubuntu.iso", "clip.mp4"):
         history.append({"name": name, "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -232,7 +232,7 @@ async def test_escape_clears_a_committed_filter_on_the_completed_tab(cfg, state)
 
 
 async def test_the_note_reports_matches_against_the_total(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "iso")
@@ -242,7 +242,7 @@ async def test_the_note_reports_matches_against_the_total(cfg):
 
 
 async def test_the_note_is_hidden_when_no_query_is_active(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -250,7 +250,7 @@ async def test_the_note_is_hidden_when_no_query_is_active(cfg):
 
 
 async def test_no_match_says_so_instead_of_showing_the_splash(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "nothingmatchesthis")
@@ -263,7 +263,7 @@ async def test_no_match_says_so_instead_of_showing_the_splash(cfg):
 async def test_the_empty_message_names_the_current_query_not_the_last_one(cfg):
     """set_rows draws the placeholder, so assigning it afterwards leaves the
     message describing the query before this one."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "iso")
@@ -277,7 +277,7 @@ async def test_the_empty_message_names_the_current_query_not_the_last_one(cfg):
 
 
 async def test_reopening_the_box_keeps_the_committed_query(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "iso")
@@ -291,7 +291,7 @@ async def test_reopening_the_box_keeps_the_committed_query(cfg):
 async def test_a_letter_typed_into_the_box_does_not_trigger_its_binding(cfg):
     """The regression the settings screen taught: a focused Input must eat d,
     not have it open the delete modal underneath."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -304,7 +304,7 @@ async def test_a_letter_typed_into_the_box_does_not_trigger_its_binding(cfg):
 async def test_tab_typed_into_the_box_does_not_switch_tabs(cfg):
     """tab is a priority binding, so unlike a letter it reaches the app even
     while an Input holds focus. Without the guard, typing would flip the view."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("slash")
@@ -315,7 +315,7 @@ async def test_tab_typed_into_the_box_does_not_switch_tabs(cfg):
 
 
 async def test_tab_still_switches_tabs_when_the_box_is_closed(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -325,7 +325,7 @@ async def test_tab_still_switches_tabs_when_the_box_is_closed(cfg):
 
 async def test_d_still_opens_the_delete_modal_when_the_box_is_closed(cfg):
     """The other half: guarding the binding must not disable it outright."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -338,7 +338,7 @@ async def test_the_query_filters_the_completed_tab_too(cfg, state):
     log = state / "history.jsonl"
     for name in ("ubuntu.iso", "debian.iso", "clip.mp4"):
         history.append({"name": name, "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -352,7 +352,7 @@ async def test_the_query_follows_you_across_tabs(cfg, state):
     log = state / "history.jsonl"
     history.append({"name": "ubuntu.iso", "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
     history.append({"name": "clip.mp4", "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await type_query(pilot, "iso")
@@ -367,7 +367,7 @@ async def test_the_completed_note_counts_without_a_denominator(cfg, state):
     """The log is unbounded, so "2 of N" would need a number nobody has."""
     log = state / "history.jsonl"
     history.append({"name": "ubuntu.iso", "status": "ok", "bytes": 1, "ts": 1, "path": ""}, log)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("tab")
@@ -378,7 +378,7 @@ async def test_the_completed_note_counts_without_a_denominator(cfg, state):
 
 async def test_the_search_box_is_not_in_the_dom_until_it_is_opened(cfg):
     """A hidden Input steals auto-focus and swallows the dashboard's keys."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         assert app.query_one("#body")
@@ -387,7 +387,7 @@ async def test_the_search_box_is_not_in_the_dom_until_it_is_opened(cfg):
 
 
 async def test_closing_the_box_takes_it_back_out_of_the_dom(cfg):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("slash")
@@ -403,7 +403,7 @@ async def test_a_filtered_row_is_the_one_acted_on(cfg):
     """Filtering rebuilds the row list, so the cursor must land on a match and
     not on whatever occupied that index before."""
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -418,7 +418,7 @@ async def test_a_filtered_row_is_the_one_acted_on(cfg):
 async def test_modals_still_focus_their_input(cfg):
     """Turning auto-focus off app-wide to tame the search box would leave every
     modal's Input unfocused, and Enter would do nothing."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")

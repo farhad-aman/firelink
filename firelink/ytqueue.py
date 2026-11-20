@@ -144,7 +144,7 @@ def spawn(job: dict, state: Path) -> None:
     """Detach the supervisor so closing the shell never stops the download."""
     target = ytjob.save(state / "yt", job)
     subprocess.Popen(
-        [sys.executable, "-m", "dl.ytrun", str(target)],
+        [sys.executable, "-m", "firelink.ytrun", str(target)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         stdin=subprocess.DEVNULL,

@@ -1,6 +1,6 @@
 import pytest
 
-from dl import config
+from firelink import config
 
 
 @pytest.mark.parametrize(
@@ -303,7 +303,7 @@ def test_half_configured_credentials_do_not_count_as_configured():
     quietly using the public page."""
     from dataclasses import replace
 
-    from dl import spotify
+    from firelink import spotify
 
     cfg = config.defaults()
     assert spotify.api_configured(replace(cfg, spotify_id="abc")) is False

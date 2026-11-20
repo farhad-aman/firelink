@@ -1,6 +1,6 @@
 import pytest
 
-from dl import playlist
+from firelink import playlist
 
 
 @pytest.mark.parametrize(
@@ -229,7 +229,7 @@ def test_expand_reports_how_many_were_unavailable(monkeypatch):
     assert listing.unavailable == 1
 
 
-from dl import ytdlp as ytdlp_module
+from firelink import ytdlp as ytdlp_module
 
 
 class OnePer:

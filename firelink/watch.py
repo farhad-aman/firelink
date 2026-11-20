@@ -62,7 +62,7 @@ def poll_once(text: str, seen: deque, cfg: Config, client) -> bool:
         # deferred rather than guessed at.
         print(
             f"  {_g('⏭', cfg)}  skipped  {name or value}"
-            f"  — {_already(collision)}; `dl <url>` to choose"
+            f"  — {_already(collision)}; `firelink <url>` to choose"
         )
         return False
 
@@ -114,11 +114,11 @@ def _catch_youtube(url: str, cfg: Config) -> bool:
     except ytrun.ProbeFailed as exc:
         # Queuing blind would let yt-dlp find the file already there and do
         # nothing, which is exactly the silence this check exists to remove.
-        print(f"  {_g('⏭', cfg)}  skipped  {url}  — {exc}; `dl <url>` to choose")
+        print(f"  {_g('⏭', cfg)}  skipped  {url}  — {exc}; `firelink <url>` to choose")
         return False
     target = Path(filename) if filename else None
     if target is not None and duplicates.detect_target(target) is not None:
-        print(f"  {_g('⏭', cfg)}  skipped  {target.name}  — already there; `dl <url>` to choose")
+        print(f"  {_g('⏭', cfg)}  skipped  {target.name}  — already there; `firelink <url>` to choose")
         return False
 
     job["title"] = title
@@ -145,12 +145,12 @@ def run(
 
     Holds the same lock the dashboard does. It has no window, but it runs
     until told otherwise and queues downloads while it does, which makes it a
-    copy of dl rather than one of its commands.
+    copy of firelink rather than one of its commands.
     """
     where = state or STATE_DIR
     if not instance.acquire(where):
         print(
-            f"dl is already running (pid {instance.holder(state)})",
+            f"firelink is already running (pid {instance.holder(state)})",
             file=sys.stderr,
         )
         return 1
@@ -167,7 +167,7 @@ def _watch(cfg, client, interval, reader, iterations) -> int:
     source = reader or read_clipboard
     seen: deque = deque(maxlen=20)
     print("  watching clipboard — Ctrl-C to stop")
-    print("  YouTube links are taken at best quality; run `dl <url>` to choose")
+    print("  YouTube links are taken at best quality; run `firelink <url>` to choose")
     count = 0
     swept = 0.0
     try:

@@ -15,7 +15,7 @@ def splash(theme_data) -> str:
     mark = glyph("⬇", theme_data.icons)
     lines = [
         "",
-        f"  [{theme_data.accent}]{mark}  dl[/]  [{theme_data.dim}]· download manager[/]",
+        f"  [{theme_data.accent}]{mark}  firelink[/]  [{theme_data.dim}]· download manager[/]",
         "",
         f"  [{theme_data.dim}]Nothing downloading yet.[/]",
         "",
@@ -54,7 +54,7 @@ StatusBar { height: 1; dock: top; padding: 0 1; }
 /* One docked block, so a note appearing pushes the legend up rather than off
    the bottom of the screen. */
 #footer { dock: bottom; height: auto; }
-#hint { height: 1; padding: 0 1; color: $dl-dim; }
+#hint { height: 1; padding: 0 1; color: $firelink-dim; }
 #search-note { height: 1; padding: 0 1; }
 #search-input { dock: bottom; height: 3; margin: 0 1; }
 
@@ -62,7 +62,7 @@ AddUrlModal, SpeedLimitModal, ConfirmModal, DeleteModal, PickerScreen, Duplicate
 SettingsMenuScreen, FormScreen, ProxyScreen, HeadersScreen, CategoriesScreen,
 PlaylistScreen, MatchScreen {
     align: center middle;
-    background: $dl-veil;
+    background: $firelink-veil;
 }
 
 #add-box, #limit-box, #confirm-box, #delete-box, #picker-box, #duplicate-box,
@@ -71,13 +71,13 @@ PlaylistScreen, MatchScreen {
     height: auto;
     max-height: 80%;
     padding: 1 2;
-    border: round $dl-accent;
-    background: $dl-surface;
+    border: round $firelink-accent;
+    background: $firelink-surface;
 }
 
 #add-box Label, #limit-box Label, #confirm-box Label, #delete-box Label,
 #duplicate-head, #picker-head, #settings-head, #playlist-head, #match-head {
-    text-style: bold; color: $dl-accent;
+    text-style: bold; color: $firelink-accent;
 }
 
 #add-hint, #limit-hint, #delete-hint, #duplicate-hint, #confirm-hint, #match-hint {
@@ -87,7 +87,7 @@ PlaylistScreen, MatchScreen {
 #duplicate-detail, #picker-list, #picker-error, #settings-list, #settings-error,
 #playlist-detail, #match-list {
     height: auto;
-    color: $dl-text;
+    color: $firelink-text;
 }
 
 Button {
@@ -95,27 +95,27 @@ Button {
     height: 1;
     margin-top: 1;
     border: none;
-    background: $dl-quiet;
-    color: $dl-text;
+    background: $firelink-quiet;
+    color: $firelink-text;
     text-style: none;
 }
-Button:hover { background: $dl-accent; color: $dl-surface; }
-Button:focus { background: $dl-accent; color: $dl-surface; text-style: bold; }
+Button:hover { background: $firelink-accent; color: $firelink-surface; }
+Button:focus { background: $firelink-accent; color: $firelink-surface; text-style: bold; }
 Button.-error, Button#disk, Button#overwrite {
-    background: $dl-quiet;
-    color: $dl-danger;
+    background: $firelink-quiet;
+    color: $firelink-danger;
 }
 Button.-error:focus, Button#disk:focus, Button#overwrite:focus {
-    background: $dl-danger;
-    color: $dl-surface;
+    background: $firelink-danger;
+    color: $firelink-surface;
 }
 
 Input, TextArea {
-    border: round $dl-quiet;
-    background: $dl-surface;
-    color: $dl-text;
+    border: round $firelink-quiet;
+    background: $firelink-surface;
+    color: $firelink-text;
 }
-Input:focus, TextArea:focus { border: round $dl-accent; }
+Input:focus, TextArea:focus { border: round $firelink-accent; }
 
 #urls { height: 6; }
 #settings-input { margin-top: 1; }

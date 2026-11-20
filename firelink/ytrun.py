@@ -201,7 +201,7 @@ def main(argv: list[str]) -> int:
     finally:
         alive.set()
         # However this ended, including a crash: a slot never given back is
-        # one fewer download for as long as dl runs.
+        # one fewer download for as long as firelink runs.
         hand_over(state, job["id"], cfg.general.max_concurrent)
 
 

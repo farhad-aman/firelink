@@ -1,13 +1,13 @@
 """Argument handling.
 
 Hand-rolled parsing dropped anything starting with '-' and only honoured -d and
--f in first position, so `dl <url> -d /dir` queued the directory as a URL and a
+-f in first position, so `firelink <url> -d /dir` queued the directory as a URL and a
 mistyped flag did nothing at all — both silently.
 """
 
 import pytest
 
-from dl import __main__ as entry
+from firelink import __main__ as entry
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ def test_a_mistyped_no_preview_is_refused(capsys):
 def test_a_missing_url_file_is_reported_not_raised(capsys):
     assert entry.main(["-f", "/nonexistent-url-file"]) == 1
     said = capsys.readouterr().err
-    assert "dl:" in said and "nonexistent-url-file" in said
+    assert "firelink:" in said and "nonexistent-url-file" in said
 
 
 def test_dash_h_without_a_value_is_still_an_error(capsys):
@@ -121,7 +121,7 @@ def test_a_non_url_still_reaches_cmd_add(wired):
 
 def test_help_still_returns_zero(capsys):
     assert entry.main(["--help"]) == 0
-    assert "dl history" in capsys.readouterr().out
+    assert "firelink history" in capsys.readouterr().out
 
 
 def test_an_unknown_subcommand_flag_is_refused(monkeypatch, capsys):

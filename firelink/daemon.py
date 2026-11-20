@@ -19,17 +19,17 @@ from .rpc import Aria2, Aria2Error, Aria2Unreachable
 # could reach and nothing knew about.
 PORT = 6810
 
-# A range rather than one port: these are the ports peers reach dl on, and the
+# A range rather than one port: these are the ports peers reach firelink on, and the
 # first is as likely as not to be held by another torrent client.
 BT_PORTS = "6881-6889"
 
 # The paths travel as arguments rather than in the environment: nothing in the
-# environment can move dl's state, so there is nothing there for the shim to
+# environment can move firelink's state, so there is nothing there for the shim to
 # set. A test daemon's hook still writes to the test's own directory because
 # that is what the daemon was told to use.
 _SHIM = (
     "#!/bin/sh\n"
-    'exec {python} -m dl.hook {mode} --state {state} --config {config} "$@"\n'
+    'exec {python} -m firelink.hook {mode} --state {state} --config {config} "$@"\n'
 )
 
 
@@ -184,7 +184,7 @@ def aria2_args(cfg: Config, state: Path, port: int, secret: str) -> list[str]:
         f"--log={state / 'aria2.log'}",
         "--log-level=error",
         # BitTorrent. Downloading stops the moment the file is whole: seeding
-        # is a commitment of upstream bandwidth for an unbounded time, and dl
+        # is a commitment of upstream bandwidth for an unbounded time, and firelink
         # does not make that on anyone's behalf.
         "--seed-time=0",
         "--follow-torrent=true",
@@ -258,11 +258,11 @@ def write_signature(state: Path, value: str) -> None:
 
 
 def stop_if_stale(cfg: Config, state: Path, secret: str, client) -> bool:
-    """Stop a daemon still running on arguments dl no longer asks for.
+    """Stop a daemon still running on arguments firelink no longer asks for.
 
     A daemon keeps what it started with, and most of these cannot be changed
     over RPC — the DHT could not be switched on for a daemon that predates it
-    however long dl ran. Adopting one is the normal path, so without this a
+    however long firelink ran. Adopting one is the normal path, so without this a
     setting added today reaches a machine only when something else stops the
     daemon.
 
@@ -335,7 +335,7 @@ def aria2_processes() -> list[tuple[int, int]]:
 
 
 def strays(state: Path) -> list[tuple[int, int]]:
-    """aria2 daemons this dl cannot talk to, as (pid, port).
+    """aria2 daemons this firelink cannot talk to, as (pid, port).
 
     Older versions moved to the next free port when this one was busy, so a
     machine can be carrying daemons no state directory knows about.
@@ -419,8 +419,8 @@ def ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
     # "cannot bind" right now does not mean the port belongs to someone else.
     if not _wait_bindable(PORT, 5.0):
         raise DaemonStartFailed(
-            f"port {PORT} is held by something that is not dl — "
-            f"stop it, or run `dl kill --strays` to see what is listening"
+            f"port {PORT} is held by something that is not firelink — "
+            f"stop it, or run `firelink kill --strays` to see what is listening"
         )
 
     _spawn(cfg, state, PORT, secret)
