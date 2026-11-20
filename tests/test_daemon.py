@@ -232,3 +232,50 @@ def test_aria2_args_never_set_a_global_rate_limit(tmp_path, cfg):
     """Limits are per-download; a daemon-wide cap would throttle everything."""
     args = daemon.aria2_args(cfg, tmp_path, 6810, "x")
     assert not any("max-overall-download-limit" in a for a in args)
+
+
+def _block(uri, gid):
+    return f"{uri}\t\n gid={gid}\n dir=/tmp\n continue=true\n"
+
+
+def test_a_failed_download_is_not_brought_back_by_the_next_start(tmp_path):
+    """aria2 saves failed downloads in the session. Each start re-added them,
+    they failed again, and a "Download failed" banner appeared every time."""
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "aaaa") + _block("https://e.com/b.iso", "bbbb"))
+    history.append({"ts": 1, "name": "a.iso", "url": "https://e.com/a.iso", "status": "error", "gid": "aaaa"}, tmp_path / "history.jsonl")
+    daemon.prune_failed(tmp_path)
+    left = (tmp_path / "session").read_text()
+    assert "a.iso" not in left
+    assert "gid=bbbb" in left
+
+
+def test_a_url_that_failed_before_gids_were_recorded_is_dropped_once(tmp_path):
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "aaaa"))
+    history.append({"ts": 1, "name": "a.iso", "url": "https://e.com/a.iso", "status": "error"}, tmp_path / "history.jsonl")
+    daemon.prune_failed(tmp_path)
+    assert "a.iso" not in (tmp_path / "session").read_text()
+
+
+def test_a_url_that_failed_then_was_queued_again_is_kept(tmp_path):
+    """The same address added again after a failure is a new download."""
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "new1"))
+    log = tmp_path / "history.jsonl"
+    history.append({"ts": 1, "url": "https://e.com/a.iso", "status": "error", "gid": "old1"}, log)
+    daemon.prune_failed(tmp_path)
+    assert "gid=new1" in (tmp_path / "session").read_text()
+
+
+def test_starting_the_daemon_prunes_the_session_first(tmp_path, cfg, monkeypatch):
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "aaaa"))
+    history.append({"ts": 1, "url": "https://e.com/a.iso", "status": "error", "gid": "aaaa"}, tmp_path / "history.jsonl")
+    monkeypatch.setattr(daemon.subprocess, "Popen", lambda *a, **k: type("P", (), {"pid": 7})())
+    daemon._spawn(cfg, tmp_path, daemon.PORT, "s")
+    assert "a.iso" not in (tmp_path / "session").read_text()

@@ -266,7 +266,7 @@ def test_notify_keeps_non_ascii_titles_intact():
     assert "دختره دلمو" in hook.notify_script("Download complete", "دختره دلمو.mp4")
 
 
-@pytest.mark.skipif(shutil.which("osascript") is None, reason="macOS only")
+@pytest.mark.skipif(shutil.which("osacompile") is None, reason="macOS only")
 @pytest.mark.parametrize(
     "name",
     [
@@ -277,11 +277,12 @@ def test_notify_keeps_non_ascii_titles_intact():
         "Toxicity - System of a down SOAD ｜ Drumcover.mp4",
     ],
 )
-def test_osascript_actually_accepts_what_notify_builds(name):
+def test_osascript_actually_accepts_what_notify_builds(name, tmp_path):
     """The unit tests above only prove the string looks right. This one proves
-    macOS parses it, which is the part that was broken."""
+    macOS parses it, which is the part that was broken. osacompile parses
+    without running: osascript put five real banners on screen every run."""
     done = subprocess.run(
-        ["osascript", "-e", hook.notify_script("Download complete", name)],
+        ["osacompile", "-e", hook.notify_script("Download complete", name), "-o", str(tmp_path / "n.scpt")],
         capture_output=True,
         text=True,
     )
@@ -558,3 +559,9 @@ def test_a_download_with_no_known_start_records_no_duration(cfg):
     record = hook.build_record(dict(status(), downloadSpeed="12"), "complete", cfg)
     assert record["seconds"] == 0
     assert record["avg_bps"] == 0
+
+
+def test_a_record_carries_its_gid_so_a_restart_can_tell_it_failed(cfg):
+    record = hook.build_record(dict(status(), gid="abc123"), "error", cfg, began=1)
+    assert record["gid"] == "abc123"
+    assert record["seconds"] == 0

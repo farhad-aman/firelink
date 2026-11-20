@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -157,6 +158,71 @@ def bump_generation(state: Path) -> int:
     return value
 
 
+def _failures(log: Path) -> tuple[set[str], set[str]]:
+    """Gids history records as failed, and, for records written before gids
+    were kept, the URLs whose latest record is a failure."""
+    gids: set[str] = set()
+    urls: set[str] = set()
+    try:
+        lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return gids, urls
+    for raw in lines:
+        try:
+            record = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(record, dict):
+            continue
+        url = str(record.get("url", ""))
+        if record.get("status") == "error":
+            if record.get("gid"):
+                gids.add(str(record["gid"]))
+            elif url:
+                urls.add(url)
+        else:
+            urls.discard(url)
+    return gids, urls
+
+
+def _session_blocks(text: str) -> list[list[str]]:
+    blocks: list[list[str]] = []
+    for line in text.splitlines():
+        if line and not line[0].isspace():
+            blocks.append([line])
+        elif blocks:
+            blocks[-1].append(line)
+    return blocks
+
+
+def _already_failed(block: list[str], gids: set[str], urls: set[str]) -> bool:
+    if any(uri in urls for uri in block[0].split("\t") if uri):
+        return True
+    return any(line.strip().startswith("gid=") and line.strip()[4:] in gids for line in block[1:])
+
+
+def prune_failed(state: Path) -> int:
+    """Take downloads history already records as failed out of the session.
+
+    aria2 saves failed downloads with the unfinished ones, so every start
+    re-added them, they failed again, and each start raised the same
+    "Download failed" banners. A failure stays listed until the daemon stops;
+    history keeps it after that.
+    """
+    session = state / "session"
+    if not session.exists():
+        return 0
+    gids, urls = _failures(state / "history.jsonl")
+    blocks = _session_blocks(session.read_text(errors="replace"))
+    kept = [block for block in blocks if not _already_failed(block, gids, urls)]
+    if len(kept) == len(blocks):
+        return 0
+    staging = session.with_name("session.pruning")
+    staging.write_text("".join("\n".join(block) + "\n" for block in kept))
+    staging.replace(session)
+    return len(blocks) - len(kept)
+
+
 def quarantine_session(state: Path) -> Path | None:
     """Move a session aria2 could not start with aside, never over an older one:
     the first holds the queue, and a later one may hold nothing."""
@@ -305,6 +371,7 @@ def stop_if_stale(cfg: Config, state: Path, secret: str, client) -> bool:
 
 def _spawn(cfg: Config, state: Path, port: int, secret: str) -> None:
     state.mkdir(parents=True, exist_ok=True)
+    prune_failed(state)
     write_signature(state, args_signature(aria2_args(cfg, state, port, secret)))
     with open(state / "spawn.log", "wb") as log:
         process = subprocess.Popen(

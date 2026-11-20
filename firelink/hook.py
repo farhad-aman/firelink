@@ -48,7 +48,7 @@ def build_record(
     now = int(time.time())
     # aria2 reports no start time; the queue time is the nearest thing it
     # gives, and for a download that starts at once it is the same moment.
-    seconds = max(now - began, 0) if began else 0
+    seconds = max(now - began, 0) if began and mode == "complete" else 0
     resolution = routing.resolve(url, name, cfg)
     record = {
         "ts": now,
@@ -61,6 +61,7 @@ def build_record(
         "url": url,
         "status": "ok" if mode == "complete" else "error",
         "proxy": proxied,
+        "gid": str(status.get("gid", "")),
     }
     if mode != "complete":
         record["error"] = (
