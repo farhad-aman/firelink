@@ -13,6 +13,7 @@ RETRIES = 1
 class Match:
     track: object
     choices: list
+    error: str = ""
 
     @property
     def pick(self):
@@ -45,19 +46,24 @@ def resolve(
 
     def one(track):
         candidates = []
+        error = ""
         for attempt in range(RETRIES + 1):
             try:
                 candidates = search(track)
+                error = ""
                 break
-            except spotmatch.Throttled:
+            except spotmatch.Throttled as exc:
                 # The track is fine and the pace is not, so waiting is the
                 # whole fix. Giving up here would lose a track to a problem
                 # that clears itself in a second.
+                error = f"throttled by YouTube: {exc}"
                 if attempt < RETRIES:
                     time.sleep(backoff)
-            except Exception:
+            except Exception as exc:
+                # One bad track never stops the rest of the playlist.
+                error = str(exc) or type(exc).__name__
                 break
-        return Match(track=track, choices=spotmatch.rank(track, candidates))
+        return Match(track=track, choices=spotmatch.rank(track, candidates), error=error)
 
     results = []
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:

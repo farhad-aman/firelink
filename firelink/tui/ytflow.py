@@ -116,7 +116,7 @@ class YouTubeWatchApp(App):
 
     def on_mount(self) -> None:
         self.set_interval(0.5, self.poll)
-        self.set_interval(0.1, self.table.refresh_view)
+        self.set_interval(0.1, self.table.animate)
         self.call_after_refresh(self.poll)
 
     def poll(self) -> None:

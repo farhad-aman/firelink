@@ -52,8 +52,7 @@ class SpotifyAdder:
             self.failed = str(exc)
             self._done()
             return
-        if listing.truncated:
-            self.notes.append(spotify.TRUNCATION_ADVICE)
+        self.notes.extend(spotify.listing_notes(listing))
         if not listing.tracks:
             self.failed = "nothing in it"
             self._done()

@@ -109,12 +109,15 @@ def tail(path: Path, n: int) -> list[dict]:
         size = fh.tell()
         chunks: list[bytes] = []
         read = 0
-        while read < size and sum(c.count(b"\n") for c in chunks) <= n:
+        newlines = 0
+        while read < size and newlines <= n:
             step = min(_BLOCK, size - read)
             read += step
             fh.seek(size - read)
-            chunks.insert(0, fh.read(step))
-        blob = b"".join(chunks)
+            chunk = fh.read(step)
+            newlines += chunk.count(b"\n")
+            chunks.append(chunk)
+        blob = b"".join(reversed(chunks))
 
     records: list[dict] = []
     for raw in blob.decode("utf-8", errors="replace").splitlines():

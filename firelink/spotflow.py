@@ -88,6 +88,7 @@ def skipped_lines(skipped, icons: bool = True) -> list[str]:
     """The tracks nothing was found for, named so a short playlist is visibly
     short rather than quietly so."""
     return [
-        f"  {glyph('⏭', icons)}  skipped  {match.track.title} — no match found"
+        f"  {glyph('⏭', icons)}  skipped  {match.track.title} — "
+        + (f"search failed: {match.error}" if getattr(match, "error", "") else "no match found")
         for match in skipped
     ]

@@ -163,7 +163,9 @@ def finalize(state: Path, job: dict, code: int, cfg) -> dict:
     landed = ytjob.produced_file(state, job)
     # Spotify jobs fetch their audio from YouTube, so the details that make the
     # file findable in a library are the ones the job brought with it.
-    spotflow.apply_tags(landed, job, cfg)
+    if job.get(spotflow.DETAILS) and not spotflow.apply_tags(landed, job, cfg):
+        with open(state / f"{job['id']}.log", "a", encoding="utf-8") as log:
+            log.write(f"\ntags not written to {landed}\n")
     job = _update(
         state,
         job,

@@ -1,3 +1,4 @@
+import http.client
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -15,7 +16,7 @@ def fetch_cover(url: str, timeout: float = 20, proxy: str = "") -> bytes:
     try:
         with open_url(request, timeout, proxy) as response:
             return response.read()
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
         return b""
 
 

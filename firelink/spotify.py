@@ -139,6 +139,17 @@ class Listing:
     tracks: list[Track]
     kind: str
     truncated: bool
+    api_error: str = ""
+
+
+def listing_notes(listing: Listing) -> list[str]:
+    """What the user should know about how this listing was read."""
+    if listing.api_error:
+        return [
+            f"Spotify's API refused the [spotify] credentials ({listing.api_error}); "
+            f"read the public page instead, which gives at most {EMBED_LIMIT} tracks."
+        ]
+    return [TRUNCATION_ADVICE] if listing.truncated else []
 
 
 def api_configured(cfg) -> bool:
@@ -221,13 +232,14 @@ def fetch(url: str, cfg=None, timeout: float = 25) -> Listing:
     if parsed is None:
         raise SpotifyUnreadable(f"not a Spotify track, album or playlist: {url}")
     kind, spotify_id = parsed
+    api_error = ""
     if api_configured(cfg):
         try:
             return Listing(api_tracks(kind, spotify_id, cfg, timeout), kind, False)
-        except (urllib.error.URLError, OSError, ValueError, KeyError):
+        except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
             # A typo in the config must not make every Spotify link stop
             # working when the public page would have answered.
-            pass
+            api_error = str(exc) or type(exc).__name__
     page = f"{EMBED}/{kind}/{spotify_id}"
     request = urllib.request.Request(page, headers={"User-Agent": AGENT})
     try:
@@ -240,6 +252,7 @@ def fetch(url: str, cfg=None, timeout: float = 25) -> Listing:
         tracks=tracks,
         kind=kind,
         truncated=kind != "track" and len(tracks) >= EMBED_LIMIT,
+        api_error=api_error,
     )
 
 

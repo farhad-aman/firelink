@@ -39,6 +39,7 @@ from .table import DownloadTable, is_youtube_row, row_from_job, row_from_status
 SETTLED = ("removed", "error", "complete")
 SETTLE_TIMEOUT = 5.0
 QUEUE_SWEEP = 5.0
+JOB_SWEEP = 60.0
 
 
 class FirelinkApp(App):
@@ -145,17 +146,26 @@ class FirelinkApp(App):
         # the fallback theme. Re-resolve now that the real one exists.
         self.refresh_css()
         self._repaint_hint()
-        ytjob.sweep(STATE_DIR / "yt", self.history_log)
+        self.sweep_jobs()
         self.completed.display = False
         self.search_note.display = False
         self.set_interval(0.5, self.refresh_data)
-        self.set_interval(0.1, self.table.refresh_view)
+        self.set_interval(0.1, self.table.animate)
+        # Every tick reads every job record. A finished album left hundreds of
+        # them to parse twice a second for as long as the dashboard stayed open.
+        self.set_interval(JOB_SWEEP, self.sweep_jobs)
         if self.fills_queue:
             # Now, for whatever a reboot stranded, and then slowly: a supervisor
             # killed mid-session frees its slot without handing it on.
             self.fill_youtube_queue()
             self.set_interval(QUEUE_SWEEP, self.fill_youtube_queue)
         self.call_after_refresh(self.refresh_data)
+
+    def sweep_jobs(self) -> None:
+        try:
+            ytjob.sweep(STATE_DIR / "yt", self.history_log)
+        except OSError:
+            pass
 
     def fill_youtube_queue(self) -> None:
         """Start queued YouTube jobs that no departing supervisor started."""
