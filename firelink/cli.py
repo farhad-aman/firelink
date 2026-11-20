@@ -6,7 +6,7 @@ from pathlib import Path
 from . import duplicates, routing, search, theme, torrent
 from .config import Config
 from .destinations import ensure_writable
-from .format import human_bytes, human_speed
+from .format import human_bytes, human_duration, human_speed
 from .routing import Resolution
 from .rpc import Aria2Error, Aria2Unreachable
 from .theme import glyph
@@ -273,7 +273,7 @@ def history_line(record: dict, cfg: Config) -> str:
     size = human_bytes(int(record.get("bytes", 0) or 0))
     category = record.get("category", "") or ""
     name = record.get("name", "") or "(unnamed)"
-    line = f"{when}  {state}  {size:>10}  {category:<8}  {name}"
+    line = f"{when}  {state}  {size:>10}  {_took(record):>17}  {category:<8}  {name}"
     where = Path(record.get("path", "") or "").parent
     if str(where) not in ("", "."):
         line += f"  →  {where}"
@@ -282,6 +282,14 @@ def history_line(record: dict, cfg: Config) -> str:
     if not ok and record.get("error"):
         line += f"  — {record['error']}"
     return line
+
+
+def _took(record: dict) -> str:
+    seconds = int(record.get("seconds", 0) or 0)
+    if record.get("status") != "ok" or seconds <= 0:
+        return ""
+    speed = int(record.get("avg_bps", 0) or 0) or int(record.get("bytes", 0) or 0) // seconds
+    return f"{human_duration(seconds)} {human_speed(speed)}"
 
 
 def cmd_history(cfg: Config, log: Path, args: list[str]) -> int:

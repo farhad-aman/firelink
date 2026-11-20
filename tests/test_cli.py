@@ -689,3 +689,17 @@ def test_evict_survives_a_target_with_no_name(sandbox_cfg):
 
     client = FakeClient()
     assert cli.evict(client, Path("")) == ""
+
+
+def test_history_shows_how_long_it_took_and_the_average_speed(sandbox_cfg, tmp_path, capsys):
+    log = write_history(tmp_path, [hist(bytes=600_000_000, seconds=120, avg_bps=5_000_000)])
+    cli.cmd_history(sandbox_cfg, log, [])
+    out = capsys.readouterr().out
+    assert "2m 00s" in out
+    assert "4.8 MB/s" in out or "5.0 MB/s" in out
+
+
+def test_history_leaves_time_out_for_old_records_without_one(sandbox_cfg, tmp_path, capsys):
+    log = write_history(tmp_path, [hist(seconds=0, avg_bps=0)])
+    cli.cmd_history(sandbox_cfg, log, [])
+    assert "0s" not in capsys.readouterr().out

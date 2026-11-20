@@ -542,3 +542,19 @@ def test_relocating_uses_a_move_that_crosses_volumes(tmp_path, cfg, monkeypatch)
     )
     hook.relocate(source, cfg, "https://h/download")
     assert moved and moved[0][1] == tmp_path / "video" / "file.mp4"
+
+
+def test_a_finished_download_records_its_real_duration_and_average(cfg, monkeypatch):
+    """Every row said 0 seconds, and avg_bps was the speed at the last instant,
+    which is usually close to nothing."""
+    monkeypatch.setattr(hook.time, "time", lambda: 1_000_120)
+    done = dict(status(), totalLength="600000000", downloadSpeed="12")
+    record = hook.build_record(done, "complete", cfg, began=1_000_000)
+    assert record["seconds"] == 120
+    assert record["avg_bps"] == 5_000_000
+
+
+def test_a_download_with_no_known_start_records_no_duration(cfg):
+    record = hook.build_record(dict(status(), downloadSpeed="12"), "complete", cfg)
+    assert record["seconds"] == 0
+    assert record["avg_bps"] == 0

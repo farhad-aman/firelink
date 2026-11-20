@@ -175,12 +175,13 @@ def finalize(state: Path, job: dict, code: int, cfg) -> dict:
         done=landed.stat().st_size if landed else job["done"],
     )
     ytjob.clean_scratch(state, job)
+    seconds = max(int(time.time()) - job["started"], 0)
     record = {
         "ts": int(time.time()),
         "name": landed.name if landed else job["url"],
         "bytes": job["done"],
-        "seconds": max(int(time.time()) - job["started"], 0),
-        "avg_bps": 0,
+        "seconds": seconds,
+        "avg_bps": job["done"] // seconds if seconds else 0,
         "path": job["file"],
         "category": routing.resolve("", landed.name, cfg).category.name if landed else "video",
         "url": job["url"],

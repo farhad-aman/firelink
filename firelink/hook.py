@@ -6,7 +6,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import checksum, config, daemon, history, routing, torrent
+from . import checksum, config, daemon, history, routing, started, torrent
 from .config import STATE_DIR, Config
 from .rpc import Aria2, Aria2Error, Aria2Unreachable
 
@@ -32,7 +32,9 @@ def skip_record(status: dict) -> bool:
     return torrent.is_metadata(status)
 
 
-def build_record(status: dict, mode: str, cfg: Config, proxied: bool = False) -> dict:
+def build_record(
+    status: dict, mode: str, cfg: Config, proxied: bool = False, began: int = 0
+) -> dict:
     raw_path = _first_file(status).get("path", "")
     url = _first_uri(status)
     path = Path(raw_path) if raw_path else None
@@ -43,14 +45,17 @@ def build_record(status: dict, mode: str, cfg: Config, proxied: bool = False) ->
         path = torrent.target(status, Path(status.get("dir", "") or ""))
         name = torrent.name_of(status) or name
     total = int(status.get("totalLength", 0) or 0)
-    speed = int(status.get("downloadSpeed", 0) or 0)
+    now = int(time.time())
+    # aria2 reports no start time; the queue time is the nearest thing it
+    # gives, and for a download that starts at once it is the same moment.
+    seconds = max(now - began, 0) if began else 0
     resolution = routing.resolve(url, name, cfg)
     record = {
-        "ts": int(time.time()),
+        "ts": now,
         "name": name,
         "bytes": total,
-        "seconds": 0,
-        "avg_bps": max(speed, 0),
+        "seconds": seconds,
+        "avg_bps": total // seconds if seconds else 0,
         "path": str(path) if path else "",
         "category": resolution.category.name,
         "url": url,
@@ -301,7 +306,9 @@ def main(argv: list[str] | None = None) -> int:
         if skip_record(status):
             arm_idle_shutdown(client, cfg, state)
             return 0
-        record = build_record(status, mode, cfg, went_through_proxy(options))
+        record = build_record(
+            status, mode, cfg, went_through_proxy(options), started.when(state, gid)
+        )
         if discard_corrupt(status):
             record["error"] = f"{checksum.MISMATCH} — the file was removed"
             record["path"] = ""
