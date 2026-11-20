@@ -561,10 +561,10 @@ shim and its venv in `~/.local/share/dl`.
 **Daemon seems stuck** — `firelink kill`, then any `firelink` command restarts it. The queue
 survives in `session`.
 
-**`aria2c did not answer within 5s`** — the printed log tail says why. If ports
-6810–6819 are all taken by other software, free one.
+**`aria2c did not answer within 5s`** — the printed log tail says why. If port
+6810 is taken by other software, free it.
 
-**Downloads vanished after a crash** — check for `session.bad`. A corrupt
+**Downloads vanished after a crash** — check for `session.bad.<time>`. A corrupt
 session file is quarantined and the daemon restarts empty; the old file is kept
 for inspection.
 

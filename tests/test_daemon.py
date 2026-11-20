@@ -191,9 +191,41 @@ def test_spawn_env_drops_ambient_proxy_settings(monkeypatch):
 def test_corrupt_session_is_quarantined(tmp_path):
     session = tmp_path / "session"
     session.write_text("junk")
-    daemon.quarantine_session(tmp_path)
+    kept = daemon.quarantine_session(tmp_path)
     assert not session.exists()
-    assert (tmp_path / "session.bad").read_text() == "junk"
+    assert kept is not None and kept.read_text() == "junk"
+    assert kept.name.startswith("session.bad")
+
+
+def test_a_second_quarantine_keeps_the_first(tmp_path):
+    """The first session.bad holds the original queue. A later failed start
+    overwrote it with a session that held nothing."""
+    (tmp_path / "session").write_text("the real queue")
+    first = daemon.quarantine_session(tmp_path)
+    (tmp_path / "session").write_text("empty")
+    second = daemon.quarantine_session(tmp_path)
+    assert first != second
+    assert first.read_text() == "the real queue"
+
+
+def test_a_failed_start_says_where_the_queue_went_and_shows_this_starts_output(tmp_path, cfg, monkeypatch):
+    monkeypatch.setattr(daemon.shutil, "which", lambda _: "/usr/bin/aria2c")
+    monkeypatch.setattr(daemon, "_probe", lambda port, secret: "free")
+    monkeypatch.setattr(daemon, "_bindable", lambda port: True)
+    (tmp_path / "session").write_text("queue")
+    (tmp_path / "aria2.log").write_text("an error from last week\n")
+
+    def spawn(c, state, port, sec):
+        (state / "spawn.log").write_text("We encountered a problem while processing the option '--min-split-size'\n")
+
+    monkeypatch.setattr(daemon, "_spawn", spawn)
+    monkeypatch.setattr(daemon, "_await_rpc", lambda port, sec, t: False)
+    with pytest.raises(daemon.DaemonStartFailed) as exc:
+        daemon.ensure_running(cfg, tmp_path)
+    said = str(exc.value)
+    assert "--min-split-size" in said
+    assert "last week" not in said
+    assert "session.bad" in said
 
 
 def test_aria2_args_never_set_a_global_rate_limit(tmp_path, cfg):

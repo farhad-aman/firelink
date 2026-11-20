@@ -119,6 +119,12 @@ def torrent_destination(cfg: Config) -> Resolution:
     return Resolution(where, Category(TORRENTS, where, ("torrent",), "🧲", "#7f8fa6"))
 
 
+def video_destination(cfg: Config) -> Path:
+    """Where a yt-dlp download goes before anyone picks a folder."""
+    category = cfg.categories.get("video")
+    return category.dir if category is not None else cfg.general.default_dir
+
+
 def resolve(
     url: str, filename: str, cfg: Config, explicit_dir: Path | None = None
 ) -> Resolution:

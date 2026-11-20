@@ -4,7 +4,7 @@ import time
 from collections import deque
 from pathlib import Path
 
-from . import cli, duplicates, history, instance, routing, theme, ytdlp, youtube
+from . import cli, duplicates, history, instance, routing, spotify, theme, ytdlp, youtube
 from .config import STATE_DIR, Config
 from .destinations import ensure_writable
 from .rpc import Aria2Error, Aria2Unreachable
@@ -48,6 +48,10 @@ def poll_once(text: str, seen: deque, cfg: Config, client) -> bool:
     if not is_downloadable(value) or value in seen:
         return False
     seen.append(value)
+    # Before yt-dlp: its DRM extractor claims Spotify links too.
+    if spotify.is_spotify(value):
+        print(f"  {_g('⏭', cfg)}  skipped  {value}  — Spotify needs a confirmed match; run `firelink <url>`")
+        return False
     if ytdlp.handles(value):
         return _catch_youtube(value, cfg)
 
@@ -103,7 +107,7 @@ def _catch_youtube(url: str, cfg: Config) -> bool:
     category = cfg.categories.get("video") or routing.OTHER
     job = ytjob.new_job(
         url,
-        category.dir,
+        routing.video_destination(cfg),
         youtube.DEFAULTS,
         cfg.proxy if routing.through_proxy(url, cfg) else "",
         cfg.cookies_from,
@@ -129,7 +133,7 @@ def _catch_youtube(url: str, cfg: Config) -> bool:
     via = f"  {_g('🌐', cfg)} via proxy" if job["proxy"] else ""
     icon = theme.category_icon(category, cfg)
     verb = "caught" if started else "queued"
-    print(f"  {icon} {verb}  {title or url}  →  {category.dir}{via}")
+    print(f"  {icon} {verb}  {title or url}  →  {job['dir']}{via}")
     return True
 
 

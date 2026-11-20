@@ -47,7 +47,7 @@ def isolate_state(tmp_path, monkeypatch):
     from firelink import config as config_module
     from firelink import daemon, hook, watch
     from firelink.tui import app as app_module
-    from firelink.tui import preview, ytadd, ytflow
+    from firelink.tui import modals, preview, spotadd, spotapp, ytadd, ytflow
 
     # Every module that binds the name, not just one: `from .config import
     # STATE_DIR` takes a copy, so patching the source leaves the copies pointing
@@ -65,8 +65,12 @@ def isolate_state(tmp_path, monkeypatch):
     monkeypatch.setattr(config_module, "CONFIG_DIR", config_dir)
     for module in (config_module, entry, app_module):
         monkeypatch.setattr(module, "CONFIG_FILE", config_dir / "config.toml")
-    for module in (config_module, daemon, hook, watch, app_module, preview, ytadd, ytflow):
+    for module in (
+        config_module, daemon, hook, watch, app_module, preview, spotadd, spotapp, ytadd, ytflow
+    ):
         monkeypatch.setattr(module, "STATE_DIR", where, raising=False)
+    # The add box pre-fills from the real clipboard, which could hold anything.
+    monkeypatch.setattr(modals, "clipboard_text", lambda: "")
 
 
 @pytest.fixture(autouse=True)

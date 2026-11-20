@@ -554,21 +554,29 @@ class FirelinkApp(App):
             self.notify(f"{row.name}: no source URL to retry", severity="warning")
             return
         resolution = routing.resolve(row.url, row.name, self.cfg)
+        options = cli.add_options(
+            self.cfg,
+            resolution,
+            routing.through_proxy(row.url, self.cfg, forced=row.proxied),
+            None,
+            routing.header_lines(routing.headers_for(row.url, self.cfg)),
+        )
+        options.update(self._chosen_at_start(row.gid))
         try:
-            self.client.add_uri(
-                [row.url],
-                cli.add_options(
-                    self.cfg,
-                    resolution,
-                    routing.through_proxy(row.url, self.cfg, forced=row.proxied),
-                    None,
-                    routing.header_lines(routing.headers_for(row.url, self.cfg)),
-                ),
-            )
+            self.client.add_uri([row.url], options)
         except (Aria2Error, Aria2Unreachable) as exc:
             self.notify(f"retry failed: {exc}", severity="error")
             return
         self.notify(f"retrying {row.name}")
+
+    def _chosen_at_start(self, gid: str) -> dict:
+        """What `-d`, `-H` and `-c` set on the failed download. Rebuilding the
+        request from the URL alone dropped them."""
+        try:
+            original = self.client.get_option(gid)
+        except (Aria2Error, Aria2Unreachable):
+            return {}
+        return {key: original[key] for key in ("dir", "header", "checksum") if original.get(key)}
 
     def _retry_youtube(self, row) -> None:
         job_file = STATE_DIR / "yt" / f"{row.gid}.json"

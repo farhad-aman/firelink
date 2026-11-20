@@ -57,3 +57,10 @@ def test_a_start_time_recorded_during_a_prune_survives_it(tmp_path, monkeypatch)
     started.prune(tmp_path, ["live", "new"])
     writer[0].wait(timeout=10)
     assert set(started.load(tmp_path)) == {"live", "new"}
+
+
+def test_holding_the_same_lock_twice_in_one_process_does_not_wait_for_itself(tmp_path):
+    from firelink.filelock import held
+
+    with held(tmp_path / "x.lock"), held(tmp_path / "x.lock"):
+        pass

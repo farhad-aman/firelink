@@ -157,10 +157,19 @@ def bump_generation(state: Path) -> int:
     return value
 
 
-def quarantine_session(state: Path) -> None:
+def quarantine_session(state: Path) -> Path | None:
+    """Move a session aria2 could not start with aside, never over an older one:
+    the first holds the queue, and a later one may hold nothing."""
     session = state / "session"
-    if session.exists():
-        session.replace(state / "session.bad")
+    if not session.exists():
+        return None
+    target = state / f"session.bad.{time.strftime('%Y%m%d-%H%M%S')}"
+    n = 1
+    while target.exists():
+        target = state / f"session.bad.{time.strftime('%Y%m%d-%H%M%S')}.{n}"
+        n += 1
+    session.replace(target)
+    return target
 
 
 def aria2_args(cfg: Config, state: Path, port: int, secret: str) -> list[str]:
@@ -372,7 +381,9 @@ def stop_strays(found: list[tuple[int, int]]) -> int:
 
 
 def _tail_log(state: Path, lines: int = 20) -> str:
-    for name in ("aria2.log", "spawn.log"):
+    # spawn.log is rewritten by every start and holds why this one failed;
+    # aria2.log is appended across every run there has ever been.
+    for name in ("spawn.log", "aria2.log"):
         target = state / name
         if target.exists():
             body = target.read_text(errors="replace").splitlines()[-lines:]
@@ -461,8 +472,9 @@ def _adopt_or_spawn(cfg: Config, state: Path) -> Aria2:
         write_port(state, PORT)
         return Aria2("127.0.0.1", PORT, secret, state=state)
 
-    quarantine_session(state)
-    raise DaemonStartFailed(f"aria2c did not answer within 5s\n{_tail_log(state)}")
+    kept = quarantine_session(state)
+    moved = f"\nthe queue was moved to {kept} — move it back to session to restore it" if kept else ""
+    raise DaemonStartFailed(f"aria2c did not answer within 5s\n{_tail_log(state)}{moved}")
 
 
 def _await_rpc(port: int, secret: str, timeout: float) -> bool:

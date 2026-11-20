@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from firelink import ytjob
+from firelink import youtube, ytjob
 from firelink.youtube import Choices, DEFAULTS
 
 
@@ -429,3 +429,23 @@ def test_the_requested_language_wins_among_the_videos_own_tracks(tmp_path):
     wanted = tmp_path / "Talk.en.srt"
     wanted.write_text("x")
     assert ytjob.subtitle_for(tmp_path, "en", video) == wanted
+
+
+def test_stopping_a_job_signals_its_process_group(monkeypatch):
+    groups = []
+    monkeypatch.setattr(ytjob, "running", lambda pid: True)
+    monkeypatch.setattr(ytjob, "stop_tree", lambda pid: groups.append(pid))
+    ytjob.stop({"pid": 777})
+    assert groups == [777]
+
+
+def test_an_update_never_recreates_a_deleted_record(tmp_path):
+    assert ytjob.update(tmp_path, "yt-gone", {"status": "error"}) is None
+    assert not (tmp_path / "yt-gone.json").exists()
+
+
+def test_an_update_keeps_fields_it_was_not_given(tmp_path):
+    made = ytjob.new_job("https://youtu.be/x", tmp_path, youtube.DEFAULTS)
+    ytjob.save(tmp_path, dict(made, status="paused"))
+    merged = ytjob.update(tmp_path, made["id"], {"done": 10})
+    assert merged["status"] == "paused" and merged["done"] == 10

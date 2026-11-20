@@ -65,6 +65,14 @@ class FakeProc:
         self.returncode = -15
 
 
+@pytest.fixture(autouse=True)
+def stopped_groups(monkeypatch):
+    """Never signal a real process group from a test: 4242 may be one."""
+    groups = []
+    monkeypatch.setattr(ytjob, "stop_tree", lambda pid: groups.append(pid))
+    return groups
+
+
 @pytest.fixture
 def running(monkeypatch):
     proc = FakeProc()
@@ -200,3 +208,57 @@ def test_take_slot_still_works_when_the_lock_is_available(tmp_path):
     directory.mkdir(parents=True)
     assert ytqueue.take_slot(directory, "yt-new", 3) is True
     assert (directory / "yt-new.claim").exists()
+
+
+def test_yt_dlp_gets_its_own_process_group(yard, job, monkeypatch, cfg):
+    """yt-dlp hands the transfer to an aria2c child. Its own group is what
+    lets a pause stop both instead of orphaning aria2c."""
+    proc = FakeProc()
+    proc.returncode = 1
+    seen = {}
+
+    def popen(*a, **k):
+        seen.update(k)
+        return proc
+
+    monkeypatch.setattr(ytrun.subprocess, "Popen", popen)
+    monkeypatch.setattr(ytrun, "probe", lambda job, timeout: ("A title", "", 0))
+    ytrun._run(yard, dict(job), cfg)
+    assert seen.get("start_new_session") is True
+
+
+def test_pausing_stops_the_whole_group(yard, job, running, stopped_groups, cfg):
+    ytjob.save(yard, dict(job, status="paused"))
+    ytrun._run(yard, dict(job), cfg)
+    assert stopped_groups == [running.pid]
+
+
+def test_a_pause_written_mid_poll_is_not_overwritten(yard, job, running, monkeypatch, cfg):
+    """The supervisor read the record, then the dashboard wrote "paused", then
+    the supervisor saved its stale "active" copy and the download kept going."""
+    paused = {"done": False}
+
+    def pause_in_the_gap(log, tail=4000):
+        if not paused["done"]:
+            paused["done"] = True
+            record = ytjob.read(yard / f"{job['id']}.json")
+            ytjob.save(yard, dict(record, status="paused"))
+        return -1
+
+    monkeypatch.setattr(ytrun, "reported_speed", pause_in_the_gap)
+    ytrun._run(yard, dict(job), cfg)
+    assert running.terminated
+    assert ytjob.read(yard / f"{job['id']}.json")["status"] == "paused"
+
+
+def test_an_audio_download_is_recorded_as_audio(yard, job, monkeypatch, tmp_path, cfg):
+    """Every yt-dlp row said "video", and on_complete was told so too: a hook
+    filing audio into a music library put each Spotify track under Movies."""
+    landed = tmp_path / "dest" / "Song.m4a"
+    landed.parent.mkdir(parents=True, exist_ok=True)
+    landed.write_bytes(b"x" * 10)
+    monkeypatch.setattr(ytjob, "produced_file", lambda state, job: landed)
+    monkeypatch.setattr(ytrun.spotflow, "apply_tags", lambda *a: True)
+    ytrun.finalize(yard, dict(job), 0, cfg)
+    row = json.loads((tmp_path / "history.jsonl").read_text().splitlines()[-1])
+    assert row["category"] == "audio"

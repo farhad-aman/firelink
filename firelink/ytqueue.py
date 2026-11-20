@@ -120,7 +120,8 @@ def take_slot(directory: Path, job_id: str, cap: int) -> bool:
         # last one. Refusing leaves the job queued for fill() to retry.
         return False
     try:
-        if running(directory) >= max(cap, 1):
+        held = claims(directory)
+        if job_id in held or len(held) >= max(cap, 1):
             return False
         directory.mkdir(parents=True, exist_ok=True)
         (directory / f"{job_id}{CLAIM}").write_text(str(os.getpid()))
@@ -211,8 +212,12 @@ def start_next(state: Path, cap: int) -> dict | None:
     terminal that started it has closed.
     """
     directory = state / "yt"
+    if not free_slots(directory, cap):
+        return None
     for job in waiting(directory):
         if take_slot(directory, job["id"], cap):
             spawn(job, state)
             return job
+        if not free_slots(directory, cap):
+            return None
     return None

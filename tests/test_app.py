@@ -1403,3 +1403,27 @@ async def test_a_spotify_link_from_the_add_box_goes_to_the_spotify_flow(cfg, tmp
         await pilot.pause()
     assert seen["urls"] == ["https://open.spotify.com/track/abc123"]
     assert client.added == [], "a Spotify link must not be handed to aria2"
+
+
+async def test_retry_keeps_the_folder_headers_and_checksum_it_was_started_with(cfg):
+    """`-d ~/iso -H 'Cookie: x' -c sha-256=…` retried into the category folder,
+    with no cookie, so the 403 repeated, and with no checksum, so a corrupt
+    file would be accepted."""
+    client = FakeClient()
+    client.active = [client.active[0]]
+    client.active[0].update(status="error", errorMessage="HTTP 403")
+    client.options["g1"] = {
+        "dir": "/Users/me/iso",
+        "header": ["Cookie: x"],
+        "checksum": "sha-256=abc",
+    }
+
+    app = FirelinkApp(cfg, client)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+    sent = client.add_calls[0][1]
+    assert sent["dir"] == "/Users/me/iso"
+    assert "Cookie: x" in sent["header"]
+    assert sent["checksum"] == "sha-256=abc"

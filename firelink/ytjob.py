@@ -4,11 +4,13 @@ import secrets
 import shutil
 import signal
 import subprocess
+import tempfile
 import time
 from dataclasses import asdict
 from pathlib import Path
 
 from . import ytdlp
+from .filelock import held
 from .youtube import Choices, build_args, burns_in
 
 SUBTITLE_SUFFIXES = (".vtt", ".srt", ".ass")
@@ -45,13 +47,46 @@ def choices_of(job: dict) -> Choices:
     return Choices(**job["choices"])
 
 
+RECORDS_LOCK = "records.lock"
+
+
 def save(directory: Path, job: dict) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / f"{job['id']}.json"
-    staging = target.with_suffix(".json.writing")
-    staging.write_text(json.dumps(job, ensure_ascii=False))
-    staging.replace(target)
+    with held(directory / RECORDS_LOCK):
+        _write(target, job)
     return target
+
+
+def update(
+    directory: Path, job_id: str, fields: dict, keep_status: tuple[str, ...] = ()
+) -> dict | None:
+    """Merge fields into the record as it is now, or None if it is gone.
+
+    The supervisor and the dashboard both write the record. Saving a copy read
+    earlier overwrote what the other wrote in between, a pause among it; and
+    saving a record the dashboard had deleted brought the row back.
+    """
+    target = directory / f"{job_id}.json"
+    with held(directory / RECORDS_LOCK):
+        try:
+            current = read(target)
+        except (OSError, json.JSONDecodeError):
+            return None
+        if current.get("status") in keep_status:
+            fields = {k: v for k, v in fields.items() if k != "status"}
+        current.update(fields)
+        _write(target, current)
+    return current
+
+
+def _write(target: Path, job: dict) -> None:
+    # A staging name of its own per write: a shared one let one writer's
+    # rename carry off another's half-written file.
+    handle, staging = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.")
+    with os.fdopen(handle, "w", encoding="utf-8") as fh:
+        fh.write(json.dumps(job, ensure_ascii=False))
+    os.replace(staging, target)
 
 
 def read(path: Path) -> dict:
@@ -259,6 +294,23 @@ def stop(job: dict) -> None:
     pid = job.get("pid", 0)
     if not running(pid):
         return
+    stop_tree(pid)
+
+
+def stop_tree(pid: int) -> None:
+    """Stop yt-dlp and the aria2c or ffmpeg it started.
+
+    yt-dlp leads its own process group. Signalling only its pid left the
+    aria2c child downloading after a pause or a delete.
+    """
+    if pid <= 0:
+        return
+    try:
+        os.killpg(pid, signal.SIGTERM)
+        return
+    except OSError:
+        pass
+    # Started by an older version, before yt-dlp had a group of its own.
     try:
         os.kill(pid, signal.SIGTERM)
     except OSError:

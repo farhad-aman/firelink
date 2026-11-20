@@ -249,7 +249,9 @@ def test_pausing_a_youtube_job_is_not_recorded_as_a_failure(tmp_path, monkeypatc
 
     state = tmp_path / "state"
     jobs = state / "yt"
-    env = dict(os.environ, DL_STATE_DIR=str(state), XDG_CONFIG_HOME=str(tmp_path / "cfg"))
+    # firelink reads no environment variable for its folders; a home of its own
+    # is what keeps the child off the developer's real config.
+    env = dict(os.environ, HOME=str(tmp_path / "home"))
     env["PATH"] = f"{fake_ytdlp(tmp_path / 'bin')}".rsplit("/", 1)[0] + os.pathsep + env["PATH"]
 
     job = ytjob.new_job("https://youtu.be/abc", tmp_path / "out", DEFAULTS)

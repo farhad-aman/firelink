@@ -4,10 +4,11 @@ import re
 import subprocess
 import sys
 import time
+import traceback
 from collections import deque
 from pathlib import Path
 
-from . import history, spotflow, ytjob, ytqueue
+from . import history, routing, spotflow, ytjob, ytqueue
 from .config import load
 from .hook import after_complete, notify
 
@@ -96,10 +97,15 @@ def probe(job: dict, timeout: float = PROBE_TIMEOUT) -> tuple[str, str, int]:
     return ytjob.parse_probe(done.stdout)
 
 
-def _update(state: Path, job: dict, **fields) -> dict:
-    job.update(fields)
-    ytjob.save(state, job)
+def _update(state: Path, job: dict, keep_status: tuple[str, ...] = (), **fields) -> dict:
+    merged = ytjob.update(state, job["id"], fields, keep_status)
+    job.update(merged if merged is not None else fields)
     return job
+
+
+def _stop(proc: subprocess.Popen) -> None:
+    ytjob.stop_tree(proc.pid)
+    proc.terminate()
 
 
 def burn_in(state: Path, job: dict) -> str:
@@ -174,7 +180,7 @@ def finalize(state: Path, job: dict, code: int, cfg) -> dict:
         "seconds": max(int(time.time()) - job["started"], 0),
         "avg_bps": 0,
         "path": job["file"],
-        "category": "video",
+        "category": routing.resolve("", landed.name, cfg).category.name if landed else "video",
         "url": job["url"],
         "status": "ok",
         "proxy": bool(job.get("proxy")),
@@ -200,6 +206,13 @@ def main(argv: list[str]) -> int:
     alive = ytqueue.heartbeat(state, job["id"])
     try:
         return _run(state, job, cfg)
+    except Exception as exc:
+        # Nothing is attached to this process: its stderr goes nowhere, so the
+        # job's own log and record are the only places a crash can be seen.
+        with open(state / f"{job['id']}.log", "a", encoding="utf-8") as log:
+            log.write(f"\nsupervisor crashed:\n{traceback.format_exc()}")
+        _update(state, job, status="error", error=f"supervisor crashed: {exc}")
+        return 1
     finally:
         alive.set()
         # However this ended, including a crash: a slot never given back is
@@ -246,12 +259,14 @@ def _run(state: Path, job: dict, cfg) -> int:
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,
                 cwd=str(directory),
+                start_new_session=True,
             )
     except OSError as exc:
         _update(state, job, status="error", error=f"yt-dlp not runnable: {exc}")
         return 1
 
-    _update(state, job, status="active", pid=proc.pid)
+    # A pause pressed during the probe is already in the record.
+    _update(state, job, keep_status=STAND_DOWN, status="active", pid=proc.pid)
     scratch = ytjob.scratch_dir(state, job)
     samples: deque[tuple[float, int]] = deque()
     while proc.poll() is None:
@@ -265,10 +280,10 @@ def _run(state: Path, job: dict, cfg) -> int:
             # The record is how the dashboard says "stop", and deleting it is
             # how it says "stop for good". Writing anything back from here
             # would recreate what was just removed, as a row nothing owns.
-            proc.terminate()
+            _stop(proc)
             return 0
         if stand_down(current.get("status", "")):
-            proc.terminate()
+            _stop(proc)
             return 0
         job.update(current)
         measured = reported_speed(log)
