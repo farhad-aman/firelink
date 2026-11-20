@@ -105,6 +105,11 @@ def best(track, candidates) -> Scored | None:
     return found[0] if found else None
 
 
+class SearchFailed(Exception):
+    """yt-dlp could not search at all — cookies, an outdated extractor, the
+    network — which is not the same answer as "nothing matched"."""
+
+
 class Throttled(Exception):
     """YouTube asked us to slow down. The track is fine; the pace is not."""
 
@@ -161,9 +166,17 @@ def find(track, proxy="", cookies_from="", count=SEARCH_COUNT, timeout=60) -> li
             timeout=timeout,
             check=False,
         )
-    except (subprocess.TimeoutExpired, OSError):
-        return []
+    except subprocess.TimeoutExpired:
+        raise SearchFailed(f"YouTube search did not answer within {timeout}s") from None
+    except OSError as exc:
+        raise SearchFailed(str(exc)) from None
     found = parse_candidates(done.stdout)
-    if not found and any(sign in (done.stderr or "") for sign in THROTTLE_SIGNS):
-        raise Throttled(done.stderr.strip().splitlines()[-1] if done.stderr else "throttled")
+    if found:
+        return found
+    said = done.stderr or ""
+    if any(sign in said for sign in THROTTLE_SIGNS):
+        raise Throttled(said.strip().splitlines()[-1] if said.strip() else "throttled")
+    errors = [line for line in said.splitlines() if line.startswith("ERROR:")]
+    if getattr(done, "returncode", 0) != 0 and errors:
+        raise SearchFailed(errors[-1].split(":", 1)[1].strip()[:200])
     return found

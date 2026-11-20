@@ -189,3 +189,14 @@ def test_a_youtube_link_it_cannot_check_is_left_alone(cfg, monkeypatch, capsys):
     assert spawned == []
     out = capsys.readouterr().out
     assert "timed out" in out
+
+
+def test_a_copied_spotify_link_is_named_not_sent_to_the_youtube_probe(cfg, monkeypatch, capsys):
+    """yt-dlp's DRM extractor claims Spotify links, so the watcher probed them
+    as YouTube and printed a probe error. The same link works from the CLI."""
+    monkeypatch.setattr("firelink.ytrun.probe", lambda *a, **k: pytest.fail("probed a Spotify link"))
+    client = FakeClient()
+    url = "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+    assert watch.poll_once(url, deque(maxlen=20), cfg, client) is False
+    assert client.added == []
+    assert "firelink <url>" in capsys.readouterr().out

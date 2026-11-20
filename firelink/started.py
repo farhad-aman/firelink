@@ -4,6 +4,8 @@ import time
 from collections.abc import Iterable
 from pathlib import Path
 
+from .filelock import beside, held
+
 LOG = "started.jsonl"
 LIMIT = 500
 
@@ -25,7 +27,7 @@ def record(state: Path, gid: str, when: int | None = None) -> None:
     path = _path(state)
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps({"gid": gid, "ts": int(time.time() if when is None else when)}) + "\n"
-    with open(path, "a", encoding="utf-8") as fh:
+    with held(beside(path)), open(path, "a", encoding="utf-8") as fh:
         fh.write(line)
 
 
@@ -66,10 +68,11 @@ def prune(state: Path, live: Iterable[str]) -> None:
     if not path.exists():
         return
     keep = set(live)
-    kept = {gid: ts for gid, ts in load(state).items() if gid in keep}
-    temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(
-        "".join(json.dumps({"gid": gid, "ts": ts}) + "\n" for gid, ts in kept.items()),
-        encoding="utf-8",
-    )
-    os.replace(temp, path)
+    with held(beside(path)):
+        kept = {gid: ts for gid, ts in load(state).items() if gid in keep}
+        temp = path.with_suffix(path.suffix + ".tmp")
+        temp.write_text(
+            "".join(json.dumps({"gid": gid, "ts": ts}) + "\n" for gid, ts in kept.items()),
+            encoding="utf-8",
+        )
+        os.replace(temp, path)

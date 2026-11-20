@@ -206,3 +206,28 @@ def test_a_failed_youtube_download_does_not_run_the_hook(tmp_path, monkeypatch):
     ytjob.save(tmp_path / "yt", job)
     ytrun.finalize(tmp_path / "yt", job, 1, config.defaults())
     assert seen == []
+
+
+def test_a_crashing_supervisor_records_why_and_gives_its_slot_back(tmp_path, monkeypatch):
+    """The supervisor's stderr goes nowhere. A crash in finalize left the job
+    "active" until it was reaped as "nothing is downloading this", with the
+    finished file on disk and no clue anywhere."""
+    from firelink import config, youtube, ytjob, ytqueue, ytrun
+
+    yard = tmp_path / "yt"
+    job = ytjob.new_job("https://youtu.be/x", tmp_path, youtube.DEFAULTS)
+    path = ytjob.save(yard, job)
+    ytqueue.hold_slot(yard, job["id"])
+    monkeypatch.setattr(ytrun, "load", config.defaults)
+    monkeypatch.setattr(ytrun, "hand_over", lambda state, job_id, cap: ytqueue.release(state, job_id))
+
+    def explode(state, job, cfg):
+        raise RuntimeError("cover art server hung up")
+
+    monkeypatch.setattr(ytrun, "_run", explode)
+    assert ytrun.main([str(path)]) == 1
+    saved = ytjob.read(path)
+    assert saved["status"] == "error"
+    assert "cover art server hung up" in saved["error"]
+    assert "RuntimeError" in (yard / f"{job['id']}.log").read_text()
+    assert ytqueue.running(yard) == 0

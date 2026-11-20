@@ -258,6 +258,13 @@ class PreviewApp(FirelinkApp):
         return sorted(collected, key=lambda r: r["name"])
 
 
+def _stand_down(cfg, queue, said: str) -> list[str]:
+    icons = select(cfg).icons
+    if queue is not None and not queue([], None):
+        return [f"  {MARKS[icons]['fail']} nothing queued"]
+    return [f"  {glyph('⬇', icons)} {said}"]
+
+
 def run_preview(
     cfg, client, gids=(), pending=(), queue=None, pick_paths=True, state=None
 ) -> tuple[list[str], bool]:
@@ -265,14 +272,14 @@ def run_preview(
 
     The preview is a dashboard scoped to one batch, so it stands down when a
     real one is open — two would fight over the same queue. Standing down is
-    not refusing: the download is already queued either way, and the open
-    dashboard is where it will appear.
+    not refusing: a batch handed over as `pending` is queued without the
+    picker, and the open dashboard is where it will appear.
     """
     where = state or STATE_DIR
     if instance.holder(where):
-        return [f"  {glyph('⬇', select(cfg).icons)} queued — watch it in the open firelink window"], False
+        return _stand_down(cfg, queue, "queued — watch it in the open firelink window"), False
     if not instance.acquire(where):
-        return [f"  {glyph('⬇', select(cfg).icons)} queued"], False
+        return _stand_down(cfg, queue, "queued"), False
     try:
         app = PreviewApp(cfg, client, gids, pending, queue, pick_paths)
         app.run()

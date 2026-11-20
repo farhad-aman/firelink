@@ -6,7 +6,7 @@ from pathlib import Path
 from . import duplicates, routing, search, theme, torrent
 from .config import Config
 from .destinations import ensure_writable
-from .format import human_bytes, human_speed
+from .format import human_bytes, human_duration, human_speed
 from .routing import Resolution
 from .rpc import Aria2Error, Aria2Unreachable
 from .theme import glyph
@@ -273,7 +273,7 @@ def history_line(record: dict, cfg: Config) -> str:
     size = human_bytes(int(record.get("bytes", 0) or 0))
     category = record.get("category", "") or ""
     name = record.get("name", "") or "(unnamed)"
-    line = f"{when}  {state}  {size:>10}  {category:<8}  {name}"
+    line = f"{when}  {state}  {size:>10}  {_took(record):>17}  {category:<8}  {name}"
     where = Path(record.get("path", "") or "").parent
     if str(where) not in ("", "."):
         line += f"  →  {where}"
@@ -282,6 +282,14 @@ def history_line(record: dict, cfg: Config) -> str:
     if not ok and record.get("error"):
         line += f"  — {record['error']}"
     return line
+
+
+def _took(record: dict) -> str:
+    seconds = int(record.get("seconds", 0) or 0)
+    if record.get("status") != "ok" or seconds <= 0:
+        return ""
+    speed = int(record.get("avg_bps", 0) or 0) or int(record.get("bytes", 0) or 0) // seconds
+    return f"{human_duration(seconds)} {human_speed(speed)}"
 
 
 def cmd_history(cfg: Config, log: Path, args: list[str]) -> int:
@@ -401,3 +409,40 @@ def read_url_file(source: str) -> list[str]:
         for line in text.splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
+
+
+def cmd_limit(args: list[str], cfg: Config, state: Path, client, keep, minute: int | None = None) -> int:
+    """Show, set, lift or hand back the global speed limit.
+
+    client is None when no daemon runs: the setting is kept and applied by the
+    schedule keeper when one starts. keep starts that keeper.
+    """
+    from . import schedule
+    from .config import valid_rate
+
+    when = schedule.now_minute() if minute is None else minute
+    if not args:
+        rate, why = schedule.effective(state, cfg, when)
+        shown = "no limit" if rate == "0" else rate
+        print(f"  {shown}  — {why}")
+        return 0
+    wanted = args[0]
+    if wanted == "auto":
+        schedule.clear_override(state)
+    else:
+        try:
+            schedule.set_override(state, valid_rate(wanted))
+        except ValueError as exc:
+            print(f"firelink: {exc}", file=sys.stderr)
+            return 1
+    rate, why = schedule.effective(state, cfg, when)
+    if client is not None:
+        try:
+            schedule.apply(client, rate)
+        except (Aria2Error, Aria2Unreachable):
+            pass
+    if schedule.needed(cfg, state):
+        keep()
+    shown = "no limit" if rate == "0" else rate
+    print(f"  {shown}  — {why}")
+    return 0

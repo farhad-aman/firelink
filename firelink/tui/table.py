@@ -249,6 +249,10 @@ def render_row(
 
 ROW_LINES = 3
 
+# Above this many rows the spinner and comet tail stop animating between data
+# refreshes: re-rendering hundreds of rows ten times a second kept a core busy.
+ANIMATED_ROWS = 60
+
 
 class DownloadTable(Static):
     def __init__(self, theme: Theme, **kwargs):
@@ -306,6 +310,11 @@ class DownloadTable(Static):
             if row.gid == gid:
                 return index
         return min(self.cursor, max(len(self.rows) - 1, 0))
+
+    def animate(self) -> None:
+        if not self.display or len(self.rows) > ANIMATED_ROWS:
+            return
+        self.refresh_view()
 
     def refresh_view(self) -> None:
         self.frame += 1

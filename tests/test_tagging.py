@@ -75,3 +75,24 @@ def test_no_cover_url_makes_no_request(monkeypatch):
         lambda *a, **k: pytest.fail("should not have made a request"),
     )
     assert tagging.fetch_cover("") == b""
+
+
+def test_a_cover_cut_off_mid_read_is_no_cover_not_a_crash(monkeypatch):
+    """IncompleteRead is an HTTPException, not an OSError, and it escaped into
+    finalize — failing a download whose audio had arrived."""
+    import http.client
+
+    from firelink import tagging
+
+    class Cut:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            raise http.client.IncompleteRead(b"partial")
+
+    monkeypatch.setattr(tagging, "open_url", lambda *a, **k: Cut())
+    assert tagging.fetch_cover("https://i.scdn.co/image/x") == b""

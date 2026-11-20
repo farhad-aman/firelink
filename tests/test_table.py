@@ -372,3 +372,24 @@ def test_row_from_job_categorises_by_the_file_once_it_has_landed(cfg):
 
     job = yt_job(choices={"container": "m4a"}, file="/tmp/Music/X - Song.m4a")
     assert row_from_job(job, cfg).category.name == "audio"
+
+
+def _rows(n):
+    return [object()] * n
+
+
+def test_a_long_list_is_not_redrawn_by_the_animation_tick(monkeypatch):
+    """500 rows re-rendered ten times a second kept a core busy and made keys
+    lag. Long lists still update with the data, just without the spinner."""
+    from firelink.theme import THEMES
+    from firelink.tui.table import ANIMATED_ROWS, DownloadTable
+
+    table = DownloadTable(THEMES["aurora"])
+    table.rows = _rows(ANIMATED_ROWS + 1)
+    drawn = []
+    monkeypatch.setattr(table, "refresh_view", lambda: drawn.append(1))
+    table.animate()
+    assert drawn == []
+    table.rows = _rows(3)
+    table.animate()
+    assert drawn == [1]

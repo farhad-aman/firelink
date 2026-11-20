@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from . import search
+from .filelock import beside, held
 
 _BLOCK = 8192
 
@@ -10,7 +11,7 @@ _BLOCK = 8192
 def append(record: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(record, ensure_ascii=False) + "\n"
-    with open(path, "a", encoding="utf-8") as fh:
+    with held(beside(path)), open(path, "a", encoding="utf-8") as fh:
         fh.write(line)
         fh.flush()
         os.fsync(fh.fileno())
@@ -27,7 +28,11 @@ def key(record: dict) -> tuple:
 def remove_entry(path: Path, record: dict) -> bool:
     if not path.exists():
         return False
-    target = key(record)
+    with held(beside(path)):
+        return _remove(path, key(record))
+
+
+def _remove(path: Path, target: tuple) -> bool:
     kept: list[str] = []
     removed = False
     for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -104,12 +109,15 @@ def tail(path: Path, n: int) -> list[dict]:
         size = fh.tell()
         chunks: list[bytes] = []
         read = 0
-        while read < size and sum(c.count(b"\n") for c in chunks) <= n:
+        newlines = 0
+        while read < size and newlines <= n:
             step = min(_BLOCK, size - read)
             read += step
             fh.seek(size - read)
-            chunks.insert(0, fh.read(step))
-        blob = b"".join(chunks)
+            chunk = fh.read(step)
+            newlines += chunk.count(b"\n")
+            chunks.append(chunk)
+        blob = b"".join(reversed(chunks))
 
     records: list[dict] = []
     for raw in blob.decode("utf-8", errors="replace").splitlines():

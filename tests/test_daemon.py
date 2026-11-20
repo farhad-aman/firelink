@@ -191,12 +191,91 @@ def test_spawn_env_drops_ambient_proxy_settings(monkeypatch):
 def test_corrupt_session_is_quarantined(tmp_path):
     session = tmp_path / "session"
     session.write_text("junk")
-    daemon.quarantine_session(tmp_path)
+    kept = daemon.quarantine_session(tmp_path)
     assert not session.exists()
-    assert (tmp_path / "session.bad").read_text() == "junk"
+    assert kept is not None and kept.read_text() == "junk"
+    assert kept.name.startswith("session.bad")
+
+
+def test_a_second_quarantine_keeps_the_first(tmp_path):
+    """The first session.bad holds the original queue. A later failed start
+    overwrote it with a session that held nothing."""
+    (tmp_path / "session").write_text("the real queue")
+    first = daemon.quarantine_session(tmp_path)
+    (tmp_path / "session").write_text("empty")
+    second = daemon.quarantine_session(tmp_path)
+    assert first != second
+    assert first.read_text() == "the real queue"
+
+
+def test_a_failed_start_says_where_the_queue_went_and_shows_this_starts_output(tmp_path, cfg, monkeypatch):
+    monkeypatch.setattr(daemon.shutil, "which", lambda _: "/usr/bin/aria2c")
+    monkeypatch.setattr(daemon, "_probe", lambda port, secret: "free")
+    monkeypatch.setattr(daemon, "_bindable", lambda port: True)
+    (tmp_path / "session").write_text("queue")
+    (tmp_path / "aria2.log").write_text("an error from last week\n")
+
+    def spawn(c, state, port, sec):
+        (state / "spawn.log").write_text("We encountered a problem while processing the option '--min-split-size'\n")
+
+    monkeypatch.setattr(daemon, "_spawn", spawn)
+    monkeypatch.setattr(daemon, "_await_rpc", lambda port, sec, t: False)
+    with pytest.raises(daemon.DaemonStartFailed) as exc:
+        daemon.ensure_running(cfg, tmp_path)
+    said = str(exc.value)
+    assert "--min-split-size" in said
+    assert "last week" not in said
+    assert "session.bad" in said
 
 
 def test_aria2_args_never_set_a_global_rate_limit(tmp_path, cfg):
     """Limits are per-download; a daemon-wide cap would throttle everything."""
     args = daemon.aria2_args(cfg, tmp_path, 6810, "x")
     assert not any("max-overall-download-limit" in a for a in args)
+
+
+def _block(uri, gid):
+    return f"{uri}\t\n gid={gid}\n dir=/tmp\n continue=true\n"
+
+
+def test_a_failed_download_is_not_brought_back_by_the_next_start(tmp_path):
+    """aria2 saves failed downloads in the session. Each start re-added them,
+    they failed again, and a "Download failed" banner appeared every time."""
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "aaaa") + _block("https://e.com/b.iso", "bbbb"))
+    history.append({"ts": 1, "name": "a.iso", "url": "https://e.com/a.iso", "status": "error", "gid": "aaaa"}, tmp_path / "history.jsonl")
+    daemon.prune_failed(tmp_path)
+    left = (tmp_path / "session").read_text()
+    assert "a.iso" not in left
+    assert "gid=bbbb" in left
+
+
+def test_a_url_that_failed_before_gids_were_recorded_is_dropped_once(tmp_path):
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "aaaa"))
+    history.append({"ts": 1, "name": "a.iso", "url": "https://e.com/a.iso", "status": "error"}, tmp_path / "history.jsonl")
+    daemon.prune_failed(tmp_path)
+    assert "a.iso" not in (tmp_path / "session").read_text()
+
+
+def test_a_url_that_failed_then_was_queued_again_is_kept(tmp_path):
+    """The same address added again after a failure is a new download."""
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "new1"))
+    log = tmp_path / "history.jsonl"
+    history.append({"ts": 1, "url": "https://e.com/a.iso", "status": "error", "gid": "old1"}, log)
+    daemon.prune_failed(tmp_path)
+    assert "gid=new1" in (tmp_path / "session").read_text()
+
+
+def test_starting_the_daemon_prunes_the_session_first(tmp_path, cfg, monkeypatch):
+    from firelink import history
+
+    (tmp_path / "session").write_text(_block("https://e.com/a.iso", "aaaa"))
+    history.append({"ts": 1, "url": "https://e.com/a.iso", "status": "error", "gid": "aaaa"}, tmp_path / "history.jsonl")
+    monkeypatch.setattr(daemon.subprocess, "Popen", lambda *a, **k: type("P", (), {"pid": 7})())
+    daemon._spawn(cfg, tmp_path, daemon.PORT, "s")
+    assert "a.iso" not in (tmp_path / "session").read_text()

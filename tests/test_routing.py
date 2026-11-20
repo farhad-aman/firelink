@@ -219,3 +219,25 @@ def test_proxy_for_gives_the_url_only_when_the_host_is_listed():
 def test_proxy_for_honours_the_forced_flag():
     cfg = proxied_cfg()
     assert routing.proxy_for("https://example.test/a.iso", cfg, True) == cfg.proxy
+
+
+def test_video_downloads_fall_back_to_the_default_folder_without_a_video_category(tmp_path):
+    """A [categories] table replaces the built-in list. Without a `video`
+    entry yt-dlp jobs got dir ".", so they landed wherever the supervisor
+    happened to be started."""
+    from firelink import config, routing
+
+    base = config.defaults()
+    cfg = config.replace(
+        base,
+        categories={k: v for k, v in base.categories.items() if k != "video"},
+        general=config.replace(base.general, default_dir=tmp_path),
+    )
+    assert routing.video_destination(cfg) == tmp_path
+
+
+def test_video_downloads_use_the_video_category_when_there_is_one():
+    from firelink import config, routing
+
+    cfg = config.defaults()
+    assert routing.video_destination(cfg) == cfg.categories["video"].dir

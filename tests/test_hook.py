@@ -266,7 +266,7 @@ def test_notify_keeps_non_ascii_titles_intact():
     assert "دختره دلمو" in hook.notify_script("Download complete", "دختره دلمو.mp4")
 
 
-@pytest.mark.skipif(shutil.which("osascript") is None, reason="macOS only")
+@pytest.mark.skipif(shutil.which("osacompile") is None, reason="macOS only")
 @pytest.mark.parametrize(
     "name",
     [
@@ -277,11 +277,12 @@ def test_notify_keeps_non_ascii_titles_intact():
         "Toxicity - System of a down SOAD ｜ Drumcover.mp4",
     ],
 )
-def test_osascript_actually_accepts_what_notify_builds(name):
+def test_osascript_actually_accepts_what_notify_builds(name, tmp_path):
     """The unit tests above only prove the string looks right. This one proves
-    macOS parses it, which is the part that was broken."""
+    macOS parses it, which is the part that was broken. osacompile parses
+    without running: osascript put five real banners on screen every run."""
     done = subprocess.run(
-        ["osascript", "-e", hook.notify_script("Download complete", name)],
+        ["osacompile", "-e", hook.notify_script("Download complete", name), "-o", str(tmp_path / "n.scpt")],
         capture_output=True,
         text=True,
     )
@@ -458,3 +459,109 @@ def test_a_real_torrent_is_recorded():
 
 def test_a_plain_download_is_recorded():
     assert hook.skip_record({"files": [{"path": "/tmp/a.iso"}]}) is False
+
+
+class _IdleDaemon:
+    def __init__(self, active=(), waiting=()):
+        self.active, self.waiting, self.shut = list(active), list(waiting), 0
+
+    def tell_active(self):
+        return self.active
+
+    def tell_waiting(self):
+        return self.waiting
+
+    def shutdown(self):
+        self.shut += 1
+
+
+def _idle_with(monkeypatch, tmp_path, fake, generation):
+    from firelink import daemon, hook
+
+    monkeypatch.setattr(hook.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(hook, "Aria2", lambda *a, **k: fake)
+    daemon.write_pid(tmp_path, 4242)
+    daemon.bump_generation(tmp_path)
+    return hook._run_idle(generation, 600, tmp_path)
+
+
+def test_an_idle_daemon_is_shut_down_and_its_pid_forgotten(tmp_path, monkeypatch):
+    from firelink import daemon
+
+    fake = _IdleDaemon()
+    assert _idle_with(monkeypatch, tmp_path, fake, generation=1) == 0
+    assert fake.shut == 1
+    assert daemon.read_pid(tmp_path) == 0
+
+
+def test_a_newer_generation_stands_the_sleeper_down(tmp_path, monkeypatch):
+    fake = _IdleDaemon()
+    _idle_with(monkeypatch, tmp_path, fake, generation=0)
+    assert fake.shut == 0
+
+
+def test_a_daemon_with_work_is_not_shut_down(tmp_path, monkeypatch):
+    fake = _IdleDaemon(waiting=[{"gid": "g1"}])
+    _idle_with(monkeypatch, tmp_path, fake, generation=1)
+    assert fake.shut == 0
+
+
+def test_a_move_that_fails_still_records_the_download_where_it_is(tmp_path, cfg, monkeypatch):
+    """A category folder on another volume made Path.replace raise EXDEV, and
+    the catch-all swallowed the history row, the notification and on_complete."""
+    import errno
+
+    monkeypatch.setattr(hook, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(hook.config, "load", lambda *a, **k: cfg)
+    monkeypatch.setattr(hook, "notify", lambda *a: None)
+    monkeypatch.setattr(hook, "arm_idle_shutdown", lambda *a: False)
+
+    def cross_device(*_a):
+        raise OSError(errno.EXDEV, "Cross-device link")
+
+    monkeypatch.setattr(hook, "final_path", cross_device)
+    client = FakeClient()
+    client.tell_status = lambda gid: status()
+    monkeypatch.setattr(hook, "Aria2", lambda *a, **k: client)
+
+    assert hook.main(["complete", "g1", "1", "/tmp/a.iso"]) == 0
+    rows = [json.loads(line) for line in (tmp_path / "history.jsonl").read_text().splitlines()]
+    assert rows[0]["name"] == "a.iso"
+    assert rows[0]["path"] == "/tmp/a.iso"
+    assert "Cross-device" in (tmp_path / "hook.log").read_text()
+
+
+def test_relocating_uses_a_move_that_crosses_volumes(tmp_path, cfg, monkeypatch):
+    moved = []
+    monkeypatch.setattr(hook.shutil, "move", lambda src, dst: moved.append((src, dst)) or dst)
+    source = tmp_path / "file.mp4"
+    source.write_text("x")
+    monkeypatch.setattr(
+        hook.routing,
+        "resolve",
+        lambda url, name, cfg: type("R", (), {"path": tmp_path if name != "file.mp4" else tmp_path / "video"})(),
+    )
+    hook.relocate(source, cfg, "https://h/download")
+    assert moved and moved[0][1] == tmp_path / "video" / "file.mp4"
+
+
+def test_a_finished_download_records_its_real_duration_and_average(cfg, monkeypatch):
+    """Every row said 0 seconds, and avg_bps was the speed at the last instant,
+    which is usually close to nothing."""
+    monkeypatch.setattr(hook.time, "time", lambda: 1_000_120)
+    done = dict(status(), totalLength="600000000", downloadSpeed="12")
+    record = hook.build_record(done, "complete", cfg, began=1_000_000)
+    assert record["seconds"] == 120
+    assert record["avg_bps"] == 5_000_000
+
+
+def test_a_download_with_no_known_start_records_no_duration(cfg):
+    record = hook.build_record(dict(status(), downloadSpeed="12"), "complete", cfg)
+    assert record["seconds"] == 0
+    assert record["avg_bps"] == 0
+
+
+def test_a_record_carries_its_gid_so_a_restart_can_tell_it_failed(cfg):
+    record = hook.build_record(dict(status(), gid="abc123"), "error", cfg, began=1)
+    assert record["gid"] == "abc123"
+    assert record["seconds"] == 0

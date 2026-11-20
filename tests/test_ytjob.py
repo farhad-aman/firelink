@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from firelink import ytjob
+from firelink import youtube, ytjob
 from firelink.youtube import Choices, DEFAULTS
 
 
@@ -409,3 +409,43 @@ def test_sweeping_leaves_fragments_belonging_to_a_live_job(tmp_path):
     scratch.mkdir(parents=True)
     ytjob.sweep(tmp_path)
     assert scratch.exists()
+
+
+def test_a_subtitle_track_is_only_the_one_named_after_its_video(tmp_path):
+    """Playlist jobs share a folder. Taking any track there burned another
+    video's subtitles in and then deleted them."""
+    video = tmp_path / "Second.mp4"
+    (tmp_path / "First.en.vtt").write_text("x")
+    (tmp_path / "Movie.srt").write_text("x")
+    assert ytjob.subtitle_for(tmp_path, "en", video) is None
+    own = tmp_path / "Second.en.vtt"
+    own.write_text("x")
+    assert ytjob.subtitle_for(tmp_path, "en", video) == own
+
+
+def test_the_requested_language_wins_among_the_videos_own_tracks(tmp_path):
+    video = tmp_path / "Talk.mkv"
+    (tmp_path / "Talk.de.vtt").write_text("x")
+    wanted = tmp_path / "Talk.en.srt"
+    wanted.write_text("x")
+    assert ytjob.subtitle_for(tmp_path, "en", video) == wanted
+
+
+def test_stopping_a_job_signals_its_process_group(monkeypatch):
+    groups = []
+    monkeypatch.setattr(ytjob, "running", lambda pid: True)
+    monkeypatch.setattr(ytjob, "stop_tree", lambda pid: groups.append(pid))
+    ytjob.stop({"pid": 777})
+    assert groups == [777]
+
+
+def test_an_update_never_recreates_a_deleted_record(tmp_path):
+    assert ytjob.update(tmp_path, "yt-gone", {"status": "error"}) is None
+    assert not (tmp_path / "yt-gone.json").exists()
+
+
+def test_an_update_keeps_fields_it_was_not_given(tmp_path):
+    made = ytjob.new_job("https://youtu.be/x", tmp_path, youtube.DEFAULTS)
+    ytjob.save(tmp_path, dict(made, status="paused"))
+    merged = ytjob.update(tmp_path, made["id"], {"done": 10})
+    assert merged["status"] == "paused" and merged["done"] == 10

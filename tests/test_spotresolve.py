@@ -92,3 +92,37 @@ def test_progress_is_reported_once_per_track():
 
 def test_an_empty_listing_resolves_to_nothing_without_starting_workers():
     assert spotresolve.resolve([], finder=good) == []
+
+
+def test_a_search_that_fails_says_why_rather_than_nothing_found():
+    """A locked cookie database made every search exit with an error, and the
+    whole playlist showed "nothing found" as if YouTube had none of it."""
+    from firelink import spotflow, spotmatch, spotresolve
+
+    def broken(track):
+        raise spotmatch.SearchFailed("could not copy Chrome cookie database")
+
+    track = type("T", (), {"title": "Song", "query": "Artist Song"})()
+    [match] = spotresolve.resolve([track], finder=broken)
+    assert match.choices == []
+    assert "Chrome cookie" in match.error
+    assert "Chrome cookie" in spotflow.skipped_lines([match], icons=False)[0]
+
+
+def test_a_failing_yt_dlp_search_raises_with_its_last_error(monkeypatch):
+    import subprocess
+
+    from firelink import spotmatch
+
+    monkeypatch.setattr(
+        spotmatch.subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 1, "", "WARNING: x\nERROR: could not copy Chrome cookie database\n"),
+    )
+    track = type("T", (), {"title": "Song", "query": "Artist Song"})()
+    try:
+        spotmatch.find(track)
+    except spotmatch.SearchFailed as exc:
+        assert "Chrome cookie" in str(exc)
+    else:
+        raise AssertionError("an erroring search came back as an empty answer")

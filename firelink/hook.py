@@ -1,13 +1,14 @@
 import shlex
+import shutil
 import subprocess
 import sys
 import time
 import traceback
 from pathlib import Path
 
-from . import checksum, config, daemon, history, routing, torrent
+from . import checksum, config, daemon, history, routing, started, torrent
 from .config import STATE_DIR, Config
-from .rpc import Aria2
+from .rpc import Aria2, Aria2Error, Aria2Unreachable
 
 
 def _first_file(status: dict) -> dict:
@@ -31,7 +32,9 @@ def skip_record(status: dict) -> bool:
     return torrent.is_metadata(status)
 
 
-def build_record(status: dict, mode: str, cfg: Config, proxied: bool = False) -> dict:
+def build_record(
+    status: dict, mode: str, cfg: Config, proxied: bool = False, began: int = 0
+) -> dict:
     raw_path = _first_file(status).get("path", "")
     url = _first_uri(status)
     path = Path(raw_path) if raw_path else None
@@ -42,19 +45,23 @@ def build_record(status: dict, mode: str, cfg: Config, proxied: bool = False) ->
         path = torrent.target(status, Path(status.get("dir", "") or ""))
         name = torrent.name_of(status) or name
     total = int(status.get("totalLength", 0) or 0)
-    speed = int(status.get("downloadSpeed", 0) or 0)
+    now = int(time.time())
+    # aria2 reports no start time; the queue time is the nearest thing it
+    # gives, and for a download that starts at once it is the same moment.
+    seconds = max(now - began, 0) if began and mode == "complete" else 0
     resolution = routing.resolve(url, name, cfg)
     record = {
-        "ts": int(time.time()),
+        "ts": now,
         "name": name,
         "bytes": total,
-        "seconds": 0,
-        "avg_bps": max(speed, 0),
+        "seconds": seconds,
+        "avg_bps": total // seconds if seconds else 0,
         "path": str(path) if path else "",
         "category": resolution.category.name,
         "url": url,
         "status": "ok" if mode == "complete" else "error",
         "proxy": proxied,
+        "gid": str(status.get("gid", "")),
     }
     if mode != "complete":
         record["error"] = (
@@ -145,7 +152,8 @@ def relocate(path: Path, cfg: Config, url: str) -> Path:
         while destination.exists():
             destination = target_dir / f"{stem}.{n}{suffix}"
             n += 1
-    path.replace(destination)
+    # Across volumes a rename fails with EXDEV; move copies then deletes.
+    shutil.move(path, destination)
     return destination
 
 
@@ -238,7 +246,8 @@ def _run_idle(generation: int, delay: int, state: Path) -> int:
         client = Aria2("127.0.0.1", daemon.read_port(state), daemon.read_secret(state), timeout=2.0)
         if not client.tell_active() and not client.tell_waiting():
             client.shutdown()
-    except Exception:
+            daemon.clear_pid(state)
+    except (Aria2Error, Aria2Unreachable):
         pass
     return 0
 
@@ -249,8 +258,8 @@ def _log(state: Path, message: str) -> None:
         fh.write(f"--- {time.ctime()}\n{message}\n")
 
 
-def _log_failure(state: Path) -> None:
-    _log(state, traceback.format_exc())
+def _log_failure(state: Path, mode: str, gid: str) -> None:
+    _log(state, f"{mode} hook for gid {gid}\n{traceback.format_exc()}")
 
 
 def _take(args: list[str], flag: str) -> str:
@@ -279,10 +288,10 @@ def main(argv: list[str] | None = None) -> int:
     where = _take(args, "--state")
     config_file = _take(args, "--config")
     state = Path(where) if where else STATE_DIR
+    mode = args[0]
+    gid = args[1] if len(args) > 1 else ""
 
     try:
-        mode = args[0]
-        gid = args[1] if len(args) > 1 else ""
         cfg = config.load(Path(config_file)) if config_file else config.load()
         # Talk to the daemon that called us, which is the one this state
         # directory records. ensure_running would go to the fixed port and
@@ -298,7 +307,9 @@ def main(argv: list[str] | None = None) -> int:
         if skip_record(status):
             arm_idle_shutdown(client, cfg, state)
             return 0
-        record = build_record(status, mode, cfg, went_through_proxy(options))
+        record = build_record(
+            status, mode, cfg, went_through_proxy(options), started.when(state, gid)
+        )
         if discard_corrupt(status):
             record["error"] = f"{checksum.MISMATCH} — the file was removed"
             record["path"] = ""
@@ -306,7 +317,11 @@ def main(argv: list[str] | None = None) -> int:
             original = Path(record["path"])
             drop_control_file(original)
             drop_source_torrent(client, status)
-            final = final_path(original, cfg, record["url"], status)
+            try:
+                final = final_path(original, cfg, record["url"], status)
+            except OSError as exc:
+                _log(state, f"could not move {original} into its category folder: {exc}")
+                final = original
             drop_control_file(final)
             record["path"] = str(final)
         history.append(record, state / "history.jsonl")
@@ -317,7 +332,7 @@ def main(argv: list[str] | None = None) -> int:
             after_complete(cfg, record, state)
         arm_idle_shutdown(client, cfg, state)
     except Exception:
-        _log_failure(state)
+        _log_failure(state, mode, gid)
     return 0
 
 

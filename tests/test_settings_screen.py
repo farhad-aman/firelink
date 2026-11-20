@@ -550,3 +550,49 @@ async def test_escape_returns_nothing_from_the_categories_screen(cfg):
         await pilot.press("escape")
         await pilot.pause()
     assert app.result == {}
+
+
+async def test_schedule_windows_can_be_added_and_saved(cfg):
+    from firelink.tui.settings import ScheduleScreen
+
+    screen = ScheduleScreen(cfg)
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen.add_rule("01:00-07:00 | off")
+        screen.add_rule("07:00-01:00 | 2m")
+        await pilot.pause()
+        assert screen.payload() == {("schedule",): {"01:00-07:00": "0", "07:00-01:00": "2M"}}
+
+
+async def test_a_schedule_window_the_daemon_could_not_follow_is_refused(cfg):
+    from firelink.tui.settings import ScheduleScreen
+
+    screen = ScheduleScreen(cfg)
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen.add_rule("1am-7am | fast")
+        await pilot.pause()
+        assert screen.rules == []
+        assert screen.error
+
+
+async def test_a_long_proxy_list_scrolls_with_the_cursor_and_keeps_the_hint(cfg):
+    """25 domains in a 24-line terminal pushed the last rows and the key hint
+    off the bottom of the box, with no way to reach them."""
+    domains = tuple(f"site{n:02d}.com" for n in range(25))
+    screen = ProxyScreen(config.replace(cfg, proxy_domains=domains))
+    app = Host(screen)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        assert "site00.com" in screen.body
+        assert "site24.com" not in screen.body
+        assert "more below" in screen.body
+        for _ in range(24):
+            await pilot.press("down")
+        await pilot.pause()
+        assert "▌ site24.com" in screen.body
+        assert "more above" in screen.body
+        assert "URL" in screen.body
+        assert len(screen.body.splitlines()) <= 24 - 8

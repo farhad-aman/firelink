@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -12,6 +13,7 @@ from pathlib import Path
 
 from . import config as config_module
 from .config import STATE_DIR, Config
+from .filelock import held
 from .rpc import Aria2, Aria2Error, Aria2Unreachable
 
 # One port, fixed. Roaming to the next free port when this one was busy is how
@@ -104,6 +106,10 @@ def alive(pid: int) -> bool:
 
 def _terminate(pid: int, wait: float = 5.0) -> None:
     """Stop a daemon of ours that no longer answers its own secret."""
+    # read_pid answers 0 for a missing file, and kill(0) would signal this
+    # process's own group.
+    if pid <= 0:
+        return
     try:
         os.kill(pid, signal.SIGTERM)
     except OSError:
@@ -152,10 +158,84 @@ def bump_generation(state: Path) -> int:
     return value
 
 
-def quarantine_session(state: Path) -> None:
+def _failures(log: Path) -> tuple[set[str], set[str]]:
+    """Gids history records as failed, and, for records written before gids
+    were kept, the URLs whose latest record is a failure."""
+    gids: set[str] = set()
+    urls: set[str] = set()
+    try:
+        lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return gids, urls
+    for raw in lines:
+        try:
+            record = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(record, dict):
+            continue
+        url = str(record.get("url", ""))
+        if record.get("status") == "error":
+            if record.get("gid"):
+                gids.add(str(record["gid"]))
+            elif url:
+                urls.add(url)
+        else:
+            urls.discard(url)
+    return gids, urls
+
+
+def _session_blocks(text: str) -> list[list[str]]:
+    blocks: list[list[str]] = []
+    for line in text.splitlines():
+        if line and not line[0].isspace():
+            blocks.append([line])
+        elif blocks:
+            blocks[-1].append(line)
+    return blocks
+
+
+def _already_failed(block: list[str], gids: set[str], urls: set[str]) -> bool:
+    if any(uri in urls for uri in block[0].split("\t") if uri):
+        return True
+    return any(line.strip().startswith("gid=") and line.strip()[4:] in gids for line in block[1:])
+
+
+def prune_failed(state: Path) -> int:
+    """Take downloads history already records as failed out of the session.
+
+    aria2 saves failed downloads with the unfinished ones, so every start
+    re-added them, they failed again, and each start raised the same
+    "Download failed" banners. A failure stays listed until the daemon stops;
+    history keeps it after that.
+    """
     session = state / "session"
-    if session.exists():
-        session.replace(state / "session.bad")
+    if not session.exists():
+        return 0
+    gids, urls = _failures(state / "history.jsonl")
+    blocks = _session_blocks(session.read_text(errors="replace"))
+    kept = [block for block in blocks if not _already_failed(block, gids, urls)]
+    if len(kept) == len(blocks):
+        return 0
+    staging = session.with_name("session.pruning")
+    staging.write_text("".join("\n".join(block) + "\n" for block in kept))
+    staging.replace(session)
+    return len(blocks) - len(kept)
+
+
+def quarantine_session(state: Path) -> Path | None:
+    """Move a session aria2 could not start with aside, never over an older one:
+    the first holds the queue, and a later one may hold nothing."""
+    session = state / "session"
+    if not session.exists():
+        return None
+    target = state / f"session.bad.{time.strftime('%Y%m%d-%H%M%S')}"
+    n = 1
+    while target.exists():
+        target = state / f"session.bad.{time.strftime('%Y%m%d-%H%M%S')}.{n}"
+        n += 1
+    session.replace(target)
+    return target
 
 
 def aria2_args(cfg: Config, state: Path, port: int, secret: str) -> list[str]:
@@ -205,6 +285,11 @@ def aria2_args(cfg: Config, state: Path, port: int, secret: str) -> list[str]:
     return args
 
 
+def port_status(port: int, secret: str) -> str:
+    """"ours", "foreign" (something else answers there) or "free"."""
+    return _probe(port, secret)
+
+
 def _probe(port: int, secret: str) -> str:
     client = Aria2("127.0.0.1", port, secret, timeout=1.0)
     try:
@@ -238,6 +323,7 @@ def _wait_bindable(port: int, timeout: float) -> bool:
             return True
         if time.monotonic() >= deadline:
             return False
+        time.sleep(0.05)
         time.sleep(0.1)
 
 
@@ -276,15 +362,16 @@ def stop_if_stale(cfg: Config, state: Path, secret: str, client) -> bool:
     try:
         if client.tell_active() or client.tell_waiting():
             return False
+        client.shutdown()
     except (Aria2Error, Aria2Unreachable):
         return False
-    _terminate(read_pid(state))
     clear_pid(state)
     return True
 
 
 def _spawn(cfg: Config, state: Path, port: int, secret: str) -> None:
     state.mkdir(parents=True, exist_ok=True)
+    prune_failed(state)
     write_signature(state, args_signature(aria2_args(cfg, state, port, secret)))
     with open(state / "spawn.log", "wb") as log:
         process = subprocess.Popen(
@@ -297,6 +384,9 @@ def _spawn(cfg: Config, state: Path, port: int, secret: str) -> None:
             env=spawn_env(),
         )
     write_pid(state, process.pid)
+    from . import schedule
+
+    schedule.start_if_needed(cfg, state, _config_path())
 
 
 _LISTEN_PORT = re.compile(r"--rpc-listen-port=(\d+)")
@@ -334,6 +424,12 @@ def aria2_processes() -> list[tuple[int, int]]:
     return found
 
 
+def runs_aria2(pid: int) -> bool:
+    """Whether pid is still an aria2 daemon. A pid file outlives its process,
+    and after a reboot the number can belong to any program."""
+    return pid > 0 and any(found == pid for found, _port in aria2_processes())
+
+
 def strays(state: Path) -> list[tuple[int, int]]:
     """aria2 daemons this firelink cannot talk to, as (pid, port).
 
@@ -360,7 +456,9 @@ def stop_strays(found: list[tuple[int, int]]) -> int:
 
 
 def _tail_log(state: Path, lines: int = 20) -> str:
-    for name in ("aria2.log", "spawn.log"):
+    # spawn.log is rewritten by every start and holds why this one failed;
+    # aria2.log is appended across every run there has ever been.
+    for name in ("spawn.log", "aria2.log"):
         target = state / name
         if target.exists():
             body = target.read_text(errors="replace").splitlines()[-lines:]
@@ -393,10 +491,31 @@ def _retire_wanderer(state: Path, secret: str) -> None:
 
 
 def ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
+    client = _ensure_running(cfg, state)
+
+    def revive() -> tuple[int, str]:
+        try:
+            fresh = _ensure_running(cfg, state)
+        except (Aria2Missing, DaemonStartFailed) as exc:
+            raise Aria2Unreachable(str(exc)) from exc
+        return fresh.port, fresh.secret
+
+    client.revive = revive
+    return client
+
+
+def _ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
     if shutil.which("aria2c") is None:
         raise Aria2Missing("aria2c not found — brew install aria2")
 
     state = STATE_DIR if state is None else state
+    # Two starting together both found the port free and both spawned; the
+    # loser's pid then overwrote the winner's.
+    with held(state / "daemon.lock"):
+        return _adopt_or_spawn(cfg, state)
+
+
+def _adopt_or_spawn(cfg: Config, state: Path) -> Aria2:
     secret = read_secret(state)
 
     if _probe(PORT, secret) == "ours":
@@ -411,9 +530,9 @@ def ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
     # holding a secret it no longer shares. Nothing can reach it, so it goes
     # rather than being left to hold the port and its downloads unseen.
     stale = read_pid(state)
-    if alive(stale):
+    if alive(stale) and runs_aria2(stale):
         _terminate(stale)
-        clear_pid(state)
+    clear_pid(state)
 
     # A daemon just asked to stop keeps its listening socket for a moment, so
     # "cannot bind" right now does not mean the port belongs to someone else.
@@ -428,8 +547,9 @@ def ensure_running(cfg: Config, state: Path | None = None) -> Aria2:
         write_port(state, PORT)
         return Aria2("127.0.0.1", PORT, secret, state=state)
 
-    quarantine_session(state)
-    raise DaemonStartFailed(f"aria2c did not answer within 5s\n{_tail_log(state)}")
+    kept = quarantine_session(state)
+    moved = f"\nthe queue was moved to {kept} — move it back to session to restore it" if kept else ""
+    raise DaemonStartFailed(f"aria2c did not answer within 5s\n{_tail_log(state)}{moved}")
 
 
 def _await_rpc(port: int, secret: str, timeout: float) -> bool:

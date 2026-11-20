@@ -339,3 +339,20 @@ def test_no_config_at_all_still_connects_directly(monkeypatch):
         lambda r, timeout=0: Fake(embed_html("spotify_track.json")),
     )
     assert spotify.fetch("https://open.spotify.com/track/abc").kind == "track"
+
+
+def test_a_rejected_credential_says_why_instead_of_advising_to_set_it(monkeypatch):
+    """The fallback told a user with credentials to go and set them, and never
+    showed the 401 that was the real problem."""
+
+    def fake_open(request, timeout=0):
+        if "accounts.spotify.com" in request.full_url:
+            raise OSError("401 Unauthorized")
+        return Fake(embed_html("spotify_playlist.json"))
+
+    monkeypatch.setattr(spotify.urllib.request, "urlopen", fake_open)
+    cfg = replace(config.defaults(), spotify_id="bad", spotify_secret="bad")
+    listing = spotify.fetch("https://open.spotify.com/playlist/p1", cfg=cfg)
+    assert "401 Unauthorized" in listing.api_error
+    assert "401 Unauthorized" in spotify.listing_notes(listing)[0]
+    assert spotify.TRUNCATION_ADVICE not in spotify.listing_notes(listing)

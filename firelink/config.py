@@ -36,6 +36,16 @@ class General:
 
 
 @dataclass(frozen=True)
+class Window:
+    """A time of day, in minutes since midnight, and the global limit for it.
+    start after end means the window runs past midnight."""
+
+    start: int
+    end: int
+    rate: str
+
+
+@dataclass(frozen=True)
 class Limits:
     per_download: str
     connections: int
@@ -66,6 +76,7 @@ class Config:
     hook_timeout: int = DEFAULT_HOOK_TIMEOUT
     spotify_id: str = ""
     spotify_secret: str = ""
+    schedule: tuple[Window, ...] = ()
 
 
 def _positive(value, fallback: int) -> int:
@@ -81,6 +92,38 @@ def parse_duration(text: str) -> int:
     if not m:
         raise ValueError(f"bad duration: {text!r}")
     return int(m.group(1)) * _MULTIPLIER[m.group(2)]
+
+
+_RATE = re.compile(r"^\d+[KM]?$")
+_CLOCK = re.compile(r"^(\d{2}):(\d{2})$")
+
+
+def valid_rate(text: str) -> str:
+    """A rate aria2 accepts, upper-cased, or ValueError. "off" is no limit."""
+    value = parse_rate(text).upper()
+    if not _RATE.match(value):
+        raise ValueError(f"bad rate: {text!r} — use a number with K or M, or off")
+    return value
+
+
+def _minute(clock: str) -> int:
+    found = _CLOCK.match(clock.strip())
+    if not found or int(found.group(1)) > 23 or int(found.group(2)) > 59:
+        raise ValueError(f"bad time: {clock!r} — use HH:MM")
+    return int(found.group(1)) * 60 + int(found.group(2))
+
+
+def schedule_from(raw: dict) -> tuple[Window, ...]:
+    windows = []
+    for span, rate in raw.items():
+        start, sep, end = str(span).partition("-")
+        if not sep:
+            raise ValueError(f"bad schedule window: {span!r} — use HH:MM-HH:MM")
+        window = Window(_minute(start), _minute(end), valid_rate(str(rate)))
+        if window.start == window.end:
+            raise ValueError(f"empty schedule window: {span!r}")
+        windows.append(window)
+    return tuple(windows)
 
 
 def parse_rate(text: str) -> str:
@@ -189,45 +232,65 @@ def _categories_from(raw: dict | None) -> dict[str, Category]:
     return cats
 
 
+_INVALID = (tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError, KeyError)
+
+
 def load(path: Path | None = None) -> Config:
     target = path or CONFIG_FILE
     if not target.exists():
         return defaults()
     try:
-        with open(target, "rb") as fh:
-            raw = tomllib.load(fh)
-        return Config(
-            general=_general_from(raw.get("general", {})),
-            limits=_limits_from(raw.get("limits", {})),
-            categories=_categories_from(raw.get("categories")),
-            domains={str(k).lower(): str(v) for k, v in raw.get("domains", DEFAULT_DOMAINS).items()},
-            proxy=str(raw.get("proxy", {}).get("url", DEFAULT_PROXY)),
-            proxy_domains=tuple(
-                str(d).lower() for d in raw.get("proxy", {}).get("domains", [])
-            ),
-            cookies_from=str(raw.get("youtube", {}).get("cookies_from", DEFAULT_COOKIES)),
-            newest=_positive(raw.get("youtube", {}).get("newest"), DEFAULT_NEWEST),
-            probe_timeout=(
-                parse_duration(raw["youtube"]["probe_timeout"])
-                if "probe_timeout" in raw.get("youtube", {})
-                else DEFAULT_PROBE_TIMEOUT
-            ),
-            headers={
-                str(host).lower(): {str(k): str(v) for k, v in fields.items()}
-                for host, fields in raw.get("headers", {}).items()
-            },
-            on_complete=str(raw.get("hooks", {}).get("on_complete", "")),
-            spotify_id=str(raw.get("spotify", {}).get("client_id", "")),
-            spotify_secret=str(raw.get("spotify", {}).get("client_secret", "")),
-            hook_timeout=(
-                parse_duration(raw["hooks"]["timeout"])
-                if "timeout" in raw.get("hooks", {})
-                else DEFAULT_HOOK_TIMEOUT
-            ),
-        )
-    except (tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError, KeyError) as exc:
+        return _parse(target)
+    except _INVALID as exc:
         print(f"firelink: {target} is invalid ({exc}) — using defaults", file=sys.stderr)
         return defaults()
+
+
+def problem(path: Path | None = None) -> str:
+    """Why the config cannot be used, or "" when it can."""
+    target = path or CONFIG_FILE
+    if not target.exists():
+        return ""
+    try:
+        _parse(target)
+    except _INVALID as exc:
+        return str(exc)
+    return ""
+
+
+def _parse(target: Path) -> Config:
+    with open(target, "rb") as fh:
+        raw = tomllib.load(fh)
+    return Config(
+        general=_general_from(raw.get("general", {})),
+        limits=_limits_from(raw.get("limits", {})),
+        categories=_categories_from(raw.get("categories")),
+        domains={str(k).lower(): str(v) for k, v in raw.get("domains", DEFAULT_DOMAINS).items()},
+        proxy=str(raw.get("proxy", {}).get("url", DEFAULT_PROXY)),
+        proxy_domains=tuple(
+            str(d).lower() for d in raw.get("proxy", {}).get("domains", [])
+        ),
+        cookies_from=str(raw.get("youtube", {}).get("cookies_from", DEFAULT_COOKIES)),
+        newest=_positive(raw.get("youtube", {}).get("newest"), DEFAULT_NEWEST),
+        probe_timeout=(
+            parse_duration(raw["youtube"]["probe_timeout"])
+            if "probe_timeout" in raw.get("youtube", {})
+            else DEFAULT_PROBE_TIMEOUT
+        ),
+        headers={
+            str(host).lower(): {str(k): str(v) for k, v in fields.items()}
+            for host, fields in raw.get("headers", {}).items()
+        },
+        on_complete=str(raw.get("hooks", {}).get("on_complete", "")),
+        spotify_id=str(raw.get("spotify", {}).get("client_id", "")),
+        spotify_secret=str(raw.get("spotify", {}).get("client_secret", "")),
+        hook_timeout=(
+            parse_duration(raw["hooks"]["timeout"])
+            if "timeout" in raw.get("hooks", {})
+            else DEFAULT_HOOK_TIMEOUT
+        ),
+        schedule=schedule_from(raw.get("schedule", {})),
+    )
 
 
 DEFAULT_TOML = """\
@@ -282,6 +345,13 @@ per_download = "off"
 connections  = 16
 splits       = 16
 min_split    = "1M"
+
+# A global limit by time of day, "HH:MM-HH:MM" = rate. A window that ends
+# before it starts runs past midnight. `firelink limit 2M` overrides it until
+# `firelink limit auto`.
+# [schedule]
+# "01:00-07:00" = "off"
+# "07:00-01:00" = "2M"
 
 [categories.video]
 dir  = "~/Movies/Downloads"

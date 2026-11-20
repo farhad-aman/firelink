@@ -293,3 +293,29 @@ def test_a_job_waiting_for_a_slot_is_not_mistaken_for_a_dead_one(state):
     """It has no claim because it has not started, not because it stopped."""
     made = job(state, "a", status="queued")
     assert ytjob.reap(state / "yt", made, set())["status"] == "queued"
+
+
+def test_a_job_already_claimed_is_not_claimed_again(tmp_path):
+    """Two fills read the waiting list before either took the lock; the
+    second claimed and spawned the job the first had just started."""
+    from firelink import ytqueue
+
+    assert ytqueue.take_slot(tmp_path, "yt-a", cap=3) is True
+    assert ytqueue.take_slot(tmp_path, "yt-a", cap=3) is False
+    assert ytqueue.running(tmp_path) == 1
+
+
+def test_a_full_queue_is_not_asked_once_per_waiting_job(tmp_path, monkeypatch):
+    from firelink import ytjob, ytqueue
+    from firelink.youtube import DEFAULTS
+
+    directory = tmp_path / "yt"
+    for n in range(20):
+        ytjob.save(directory, dict(ytjob.new_job(f"https://youtu.be/{n}", tmp_path, DEFAULTS), started=n))
+    ytqueue.hold_slot(directory, "yt-busy")
+    asked = []
+    real = ytqueue.take_slot
+    monkeypatch.setattr(ytqueue, "take_slot", lambda d, j, cap: asked.append(j) or real(d, j, cap))
+    monkeypatch.setattr(ytqueue, "spawn", lambda job, state: None)
+    assert ytqueue.start_next(tmp_path, cap=1) is None
+    assert len(asked) <= 1

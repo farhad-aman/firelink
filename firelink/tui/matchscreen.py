@@ -65,6 +65,8 @@ class MatchScreen(ModalScreen[list | None]):
                 take = match.choices[self.takes[index]].candidate
                 minutes, seconds = divmod(take.duration, 60)
                 detail = f"{minutes}:{seconds:02d}  {take.uploader[:22]}  {take.title[:30]}"
+            elif getattr(match, "error", ""):
+                detail = f"search failed: {match.error[:40]} — will be skipped"
             else:
                 detail = "nothing found — will be skipped"
             rows.append(f"  {mark} {match.track.title[:24]:<24}  {detail}")

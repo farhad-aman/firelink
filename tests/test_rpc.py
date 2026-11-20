@@ -139,3 +139,44 @@ def test_ids_are_unique_across_calls(server, client):
     client.get_version()
     client.get_version()
     assert server.calls[0]["id"] != server.calls[1]["id"]
+
+
+def test_the_local_daemon_is_reached_directly_whatever_the_proxy_settings(server, client, monkeypatch):
+    """With http_proxy set and no no_proxy entry for 127.0.0.1, urlopen sent the
+    call, secret included, to the proxy, and the daemon looked unreachable."""
+    for name in ("http_proxy", "HTTP_PROXY", "all_proxy", "ALL_PROXY"):
+        monkeypatch.setenv(name, "http://127.0.0.1:9")
+    for name in ("no_proxy", "NO_PROXY"):
+        monkeypatch.delenv(name, raising=False)
+    server.replies["aria2.getVersion"] = {"version": "1.37.0"}
+    assert client.get_version()["version"] == "1.37.0"
+
+
+def test_a_lost_daemon_is_revived_once_and_the_call_retried(server):
+    dead = Aria2("127.0.0.1", 9, SECRET)
+    revived = []
+
+    def revive():
+        revived.append(1)
+        return server.server_address[1], SECRET
+
+    dead.revive = revive
+    server.replies["aria2.getVersion"] = {"version": "1.37.0"}
+    assert dead.get_version()["version"] == "1.37.0"
+    assert revived == [1]
+    assert dead.port == server.server_address[1]
+
+
+def test_a_daemon_that_cannot_be_revived_is_still_unreachable_and_not_retried_at_once():
+    dead = Aria2("127.0.0.1", 9, SECRET)
+    attempts = []
+
+    def revive():
+        attempts.append(1)
+        raise Aria2Unreachable("aria2c did not answer within 5s")
+
+    dead.revive = revive
+    for _ in range(3):
+        with pytest.raises(Aria2Unreachable):
+            dead.get_version()
+    assert attempts == [1]

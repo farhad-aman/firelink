@@ -196,10 +196,9 @@ class YouTubeAdder:
         self._queue(index, job)
 
     def _job_for(self, url: str, where):
-        category = self.cfg.categories.get("video") or routing.OTHER
         return ytjob.new_job(
             url,
-            Path(where or category.dir),
+            Path(where or routing.video_destination(self.cfg)),
             self._choices,
             self.cfg.proxy if routing.through_proxy(url, self.cfg, self.proxy) else "",
             self.cfg.cookies_from,
@@ -208,7 +207,7 @@ class YouTubeAdder:
     def _ask_where(self, index: int, choices) -> None:
         url = self.urls[index]
         category = self.cfg.categories.get("video") or routing.OTHER
-        default_dir = category.dir
+        default_dir = routing.video_destination(self.cfg)
 
         def picked(where):
             if isinstance(where, CancelAll):

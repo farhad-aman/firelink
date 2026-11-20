@@ -376,3 +376,13 @@ def test_an_open_old_window_is_reported_not_a_traceback(monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "firelink: an old `dl` window is open (pid 42)" in err
     assert "Traceback" not in err
+
+
+def test_doctor_runs_without_starting_a_daemon(monkeypatch, tmp_path, capsys):
+    from firelink import daemon, doctor
+
+    monkeypatch.setattr(entry, "CONFIG_FILE", tmp_path / "config.toml")
+    monkeypatch.setattr(daemon, "ensure_running", lambda *a, **k: pytest.fail("started a daemon"))
+    monkeypatch.setattr(doctor, "run_checks", lambda cfg, state, path: [doctor.Check("aria2", "ok", "1.37.0")])
+    assert entry.main(["doctor"]) == 0
+    assert "aria2" in capsys.readouterr().out
