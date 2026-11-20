@@ -29,9 +29,10 @@ firelink — download manager
   firelink watch                 queue URLs as you copy them
   firelink kill                  stop the daemon
   firelink kill --strays         find daemons older versions left behind
+  firelink doctor                check the tools, config, proxy and daemon
 """
 
-SUBCOMMANDS = {"ls", "history", "pause", "resume", "rm", "watch", "kill", "help"}
+SUBCOMMANDS = {"ls", "history", "pause", "resume", "rm", "watch", "kill", "doctor", "help"}
 
 # Flags each subcommand understands. Anything else is a mistake worth saying so
 # about rather than dropping: `firelink ls --failed` used to filter nothing, quietly.
@@ -172,6 +173,11 @@ def _run(args: list[str]) -> int:
         # Starting a daemon in order to list the ones that should not exist
         # would be a poor answer to the question.
         return cli.cmd_strays(config.STATE_DIR)
+
+    if command == "doctor":
+        from . import doctor
+
+        return doctor.cmd_doctor(cfg, config.STATE_DIR, CONFIG_FILE)
 
     if command == "history":
         # Reading a file needs no daemon, and starting one to print it would be

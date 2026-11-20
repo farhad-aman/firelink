@@ -219,6 +219,11 @@ def aria2_args(cfg: Config, state: Path, port: int, secret: str) -> list[str]:
     return args
 
 
+def port_status(port: int, secret: str) -> str:
+    """"ours", "foreign" (something else answers there) or "free"."""
+    return _probe(port, secret)
+
+
 def _probe(port: int, secret: str) -> str:
     client = Aria2("127.0.0.1", port, secret, timeout=1.0)
     try:

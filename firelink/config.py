@@ -189,45 +189,64 @@ def _categories_from(raw: dict | None) -> dict[str, Category]:
     return cats
 
 
+_INVALID = (tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError, KeyError)
+
+
 def load(path: Path | None = None) -> Config:
     target = path or CONFIG_FILE
     if not target.exists():
         return defaults()
     try:
-        with open(target, "rb") as fh:
-            raw = tomllib.load(fh)
-        return Config(
-            general=_general_from(raw.get("general", {})),
-            limits=_limits_from(raw.get("limits", {})),
-            categories=_categories_from(raw.get("categories")),
-            domains={str(k).lower(): str(v) for k, v in raw.get("domains", DEFAULT_DOMAINS).items()},
-            proxy=str(raw.get("proxy", {}).get("url", DEFAULT_PROXY)),
-            proxy_domains=tuple(
-                str(d).lower() for d in raw.get("proxy", {}).get("domains", [])
-            ),
-            cookies_from=str(raw.get("youtube", {}).get("cookies_from", DEFAULT_COOKIES)),
-            newest=_positive(raw.get("youtube", {}).get("newest"), DEFAULT_NEWEST),
-            probe_timeout=(
-                parse_duration(raw["youtube"]["probe_timeout"])
-                if "probe_timeout" in raw.get("youtube", {})
-                else DEFAULT_PROBE_TIMEOUT
-            ),
-            headers={
-                str(host).lower(): {str(k): str(v) for k, v in fields.items()}
-                for host, fields in raw.get("headers", {}).items()
-            },
-            on_complete=str(raw.get("hooks", {}).get("on_complete", "")),
-            spotify_id=str(raw.get("spotify", {}).get("client_id", "")),
-            spotify_secret=str(raw.get("spotify", {}).get("client_secret", "")),
-            hook_timeout=(
-                parse_duration(raw["hooks"]["timeout"])
-                if "timeout" in raw.get("hooks", {})
-                else DEFAULT_HOOK_TIMEOUT
-            ),
-        )
-    except (tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError, KeyError) as exc:
+        return _parse(target)
+    except _INVALID as exc:
         print(f"firelink: {target} is invalid ({exc}) — using defaults", file=sys.stderr)
         return defaults()
+
+
+def problem(path: Path | None = None) -> str:
+    """Why the config cannot be used, or "" when it can."""
+    target = path or CONFIG_FILE
+    if not target.exists():
+        return ""
+    try:
+        _parse(target)
+    except _INVALID as exc:
+        return str(exc)
+    return ""
+
+
+def _parse(target: Path) -> Config:
+    with open(target, "rb") as fh:
+        raw = tomllib.load(fh)
+    return Config(
+        general=_general_from(raw.get("general", {})),
+        limits=_limits_from(raw.get("limits", {})),
+        categories=_categories_from(raw.get("categories")),
+        domains={str(k).lower(): str(v) for k, v in raw.get("domains", DEFAULT_DOMAINS).items()},
+        proxy=str(raw.get("proxy", {}).get("url", DEFAULT_PROXY)),
+        proxy_domains=tuple(
+            str(d).lower() for d in raw.get("proxy", {}).get("domains", [])
+        ),
+        cookies_from=str(raw.get("youtube", {}).get("cookies_from", DEFAULT_COOKIES)),
+        newest=_positive(raw.get("youtube", {}).get("newest"), DEFAULT_NEWEST),
+        probe_timeout=(
+            parse_duration(raw["youtube"]["probe_timeout"])
+            if "probe_timeout" in raw.get("youtube", {})
+            else DEFAULT_PROBE_TIMEOUT
+        ),
+        headers={
+            str(host).lower(): {str(k): str(v) for k, v in fields.items()}
+            for host, fields in raw.get("headers", {}).items()
+        },
+        on_complete=str(raw.get("hooks", {}).get("on_complete", "")),
+        spotify_id=str(raw.get("spotify", {}).get("client_id", "")),
+        spotify_secret=str(raw.get("spotify", {}).get("client_secret", "")),
+        hook_timeout=(
+            parse_duration(raw["hooks"]["timeout"])
+            if "timeout" in raw.get("hooks", {})
+            else DEFAULT_HOOK_TIMEOUT
+        ),
+    )
 
 
 DEFAULT_TOML = """\
