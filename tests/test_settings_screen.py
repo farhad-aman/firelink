@@ -576,3 +576,23 @@ async def test_a_schedule_window_the_daemon_could_not_follow_is_refused(cfg):
         await pilot.pause()
         assert screen.rules == []
         assert screen.error
+
+
+async def test_a_long_proxy_list_scrolls_with_the_cursor_and_keeps_the_hint(cfg):
+    """25 domains in a 24-line terminal pushed the last rows and the key hint
+    off the bottom of the box, with no way to reach them."""
+    domains = tuple(f"site{n:02d}.com" for n in range(25))
+    screen = ProxyScreen(config.replace(cfg, proxy_domains=domains))
+    app = Host(screen)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        assert "site00.com" in screen.body
+        assert "site24.com" not in screen.body
+        assert "more below" in screen.body
+        for _ in range(24):
+            await pilot.press("down")
+        await pilot.pause()
+        assert "▌ site24.com" in screen.body
+        assert "more above" in screen.body
+        assert "URL" in screen.body
+        assert len(screen.body.splitlines()) <= 24 - 8

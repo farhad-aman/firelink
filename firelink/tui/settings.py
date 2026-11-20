@@ -342,6 +342,11 @@ class ListEditScreen(IconMixin, ModalScreen[dict]):
     heading = ""
     hint = LIST_HINT
     placeholder = ""
+    # Lines lines() puts above the rows, which stay put while the rows scroll.
+    header_lines = 0
+    # Everything in the box that is not a row: border, padding, heading,
+    # error, hint and the two "more" markers.
+    CHROME_LINES = 9
 
     BINDINGS = [
         ("escape", "cancel", "cancel"),
@@ -394,8 +399,30 @@ class ListEditScreen(IconMixin, ModalScreen[dict]):
         self.query_one("#settings-input", Input).display = False
         self._repaint()
 
+    def on_resize(self, _event) -> None:
+        self._repaint()
+
+    def _room(self) -> int:
+        """Rows that fit. The box may take 80% of the terminal, and a list
+        longer than that pushed its last rows and the key hint out of sight."""
+        tall = int(self.app.size.height * 0.8)
+        taken = self.CHROME_LINES + self.header_lines + (3 if self.editing else 0)
+        return max(tall - taken, 3)
+
     def _repaint(self) -> None:
-        self.body = "\n".join(self.lines())
+        drawn = self.lines()
+        head, rows = drawn[: self.header_lines], drawn[self.header_lines :]
+        room = self._room()
+        if len(rows) > room:
+            first = min(max(self.cursor - room // 2, 0), len(rows) - room)
+            shown = rows[first : first + room]
+            above, below = first, len(rows) - first - room
+            rows = (
+                ([f"  ↑ {above} more above"] if above else [])
+                + shown
+                + ([f"  ↓ {below} more below"] if below else [])
+            )
+        self.body = "\n".join(head + rows)
         self.query_one("#settings-list", Static).update(self.body)
         self.query_one("#settings-error", Static).update(self.error)
 
@@ -476,6 +503,7 @@ class ProxyScreen(ListEditScreen):
     """The proxy URL, and the hosts always sent through it."""
 
     heading = "Proxy"
+    header_lines = 2
     BINDINGS = [*ListEditScreen.BINDINGS, Binding("u", "edit_url", "url", priority=True)]
 
     def __init__(self, cfg: Config):
