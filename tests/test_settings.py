@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from dl import config, settings
+from firelink import config, settings
 
 
 def field(**over):

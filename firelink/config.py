@@ -4,13 +4,13 @@ import tomllib
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-# Fixed, with nothing in the environment able to move them. dl is one app: one
+# Fixed, with nothing in the environment able to move them. firelink is one app: one
 # daemon, one dashboard, one queue, one history. An environment variable that
 # relocated any of these would be a way to run a second copy, and two copies
 # acting on downloads neither can see is the inconsistency this prevents.
-# Isolating a whole run belongs to a container, not to dl.
-CONFIG_DIR = Path.home() / ".config" / "dl"
-STATE_DIR = Path.home() / ".local" / "state" / "dl"
+# Isolating a whole run belongs to a container, not to firelink.
+CONFIG_DIR = Path.home() / ".config" / "firelink"
+STATE_DIR = Path.home() / ".local" / "state" / "firelink"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 
 _DURATION = re.compile(r"^(\d+)\s*([smh]?)$")
@@ -226,7 +226,7 @@ def load(path: Path | None = None) -> Config:
             ),
         )
     except (tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError, KeyError) as exc:
-        print(f"dl: {target} is invalid ({exc}) — using defaults", file=sys.stderr)
+        print(f"firelink: {target} is invalid ({exc}) — using defaults", file=sys.stderr)
         return defaults()
 
 

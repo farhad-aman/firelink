@@ -110,7 +110,7 @@ def _fit(stats: Stats, theme: Theme, width: int, badge: str, tail: str, speed: s
     """What still fits, given up in order of what can be spared.
 
     The graph goes first, then the sort badge, then the counters' words, then
-    how long dl has been open, then the counters entirely. The speed is the
+    how long firelink has been open, then the counters entirely. The speed is the
     last thing standing: it is the reading the bar exists for.
     """
     full = _counters(stats, theme)

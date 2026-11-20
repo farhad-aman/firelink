@@ -3,7 +3,7 @@ import subprocess
 
 import pytest
 
-from dl import formats
+from firelink import formats
 
 # conftest stubs formats.probe out for the whole suite, so that opening an
 # options screen never reaches the network. These are the tests of probe

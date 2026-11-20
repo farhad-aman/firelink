@@ -70,9 +70,9 @@ def run_spotify(cfg: Config, urls: list[str], state: Path | None = None):
     """
     where = state or STATE_DIR
     if instance.holder(where):
-        return ["  dl is already running — press a in that window to add it"], True
+        return ["  firelink is already running — press a in that window to add it"], True
     if not instance.acquire(where):
-        return ["  dl is already running"], True
+        return ["  firelink is already running"], True
     try:
         app = SpotifySetupApp(cfg, urls, where)
         app.run()

@@ -17,7 +17,7 @@ class MatchScreen(ModalScreen[list | None]):
     to one keypress.
 
     The arrows carry priority because a focused widget would otherwise
-    consume them, the same reason dl/tui/modals.py sets it.
+    consume them, the same reason firelink/tui/modals.py sets it.
     """
 
     BINDINGS = [

@@ -1,7 +1,7 @@
 import json
 import time
 
-from dl import started
+from firelink import started
 
 
 def test_an_unrecorded_gid_has_no_time(tmp_path):
@@ -101,7 +101,7 @@ def test_overgrown_is_true_above_the_limit(tmp_path):
 
 def test_the_client_records_the_time_a_download_was_added(tmp_path, monkeypatch):
     """The plumbing, not just the store: every add_uri caller depends on this."""
-    from dl.rpc import Aria2
+    from firelink.rpc import Aria2
 
     client = Aria2("127.0.0.1", 1, "secret", state=tmp_path)
     monkeypatch.setattr(Aria2, "_call", lambda self, method, *params: "gid42")
@@ -110,7 +110,7 @@ def test_the_client_records_the_time_a_download_was_added(tmp_path, monkeypatch)
 
 
 def test_a_client_with_no_state_records_nothing(tmp_path, monkeypatch):
-    from dl.rpc import Aria2
+    from firelink.rpc import Aria2
 
     client = Aria2("127.0.0.1", 1, "secret")
     monkeypatch.setattr(Aria2, "_call", lambda self, method, *params: "gid42")
@@ -120,7 +120,7 @@ def test_a_client_with_no_state_records_nothing(tmp_path, monkeypatch):
 
 def test_an_unwritable_state_dir_does_not_break_the_add(tmp_path, monkeypatch):
     """A lost timestamp costs a column; a raised error costs the download."""
-    from dl.rpc import Aria2
+    from firelink.rpc import Aria2
 
     monkeypatch.setattr(started, "record", _boom)
     client = Aria2("127.0.0.1", 1, "secret", state=tmp_path)

@@ -8,8 +8,8 @@ import time
 
 import pytest
 
-from dl import ytjob, ytqueue
-from dl.youtube import DEFAULTS
+from firelink import ytjob, ytqueue
+from firelink.youtube import DEFAULTS
 
 
 @pytest.fixture
@@ -244,7 +244,7 @@ def test_a_queued_job_becomes_startable_again_once_its_claim_goes_stale(state, m
 
 
 def test_a_freshly_written_claim_is_trusted(state):
-    """A `dl <url>` that exits straight after starting something must not
+    """A `firelink <url>` that exits straight after starting something must not
     leave the claim looking dead while its supervisor is still starting up."""
     directory = state / "yt"
     directory.mkdir(parents=True, exist_ok=True)

@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from dl import config, daemon, history, routing
-from dl.cli import add_options
-from dl.rpc import Aria2
+from firelink import config, daemon, history, routing
+from firelink.cli import add_options
+from firelink.rpc import Aria2
 
 pytestmark = pytest.mark.skipif(shutil.which("aria2c") is None, reason="aria2c not installed")
 
@@ -57,7 +57,7 @@ def env(tmp_path, monkeypatch):
         f'[categories.iso]\ndir = "{downloads / "ISO"}"\next = ["iso"]\n'
         f'icon = "💿"\nhue = "#4aa3ff"\n'
     )
-    # Patched in this process, not exported. dl reads no environment variable
+    # Patched in this process, not exported. firelink reads no environment variable
     # for any of this any more: one app, one place for its things. A test that
     # wants its own daemon says so here, and the daemon passes what it was
     # told down to its own hook.
@@ -180,7 +180,7 @@ def test_failed_download_records_an_error_row(env, fileserver):
 async def test_preview_exits_when_a_real_download_finishes(env, fileserver):
     import asyncio
 
-    from dl.tui.preview import PreviewApp
+    from firelink.tui.preview import PreviewApp
 
     cfg, state = env
     client = daemon.ensure_running(cfg, state)
@@ -244,8 +244,8 @@ def test_pausing_a_youtube_job_is_not_recorded_as_a_failure(tmp_path, monkeypatc
     """The supervisor has to let go of yt-dlp itself. Signalling it from the
     dashboard would race the poll loop into finalize(), and a pause would come
     back as an error the user is invited to retry."""
-    from dl import ytjob
-    from dl.youtube import DEFAULTS
+    from firelink import ytjob
+    from firelink.youtube import DEFAULTS
 
     state = tmp_path / "state"
     jobs = state / "yt"
@@ -256,7 +256,7 @@ def test_pausing_a_youtube_job_is_not_recorded_as_a_failure(tmp_path, monkeypatc
     record = ytjob.save(jobs, job)
 
     supervisor = subprocess.Popen(
-        [sys.executable, "-m", "dl.ytrun", str(record)],
+        [sys.executable, "-m", "firelink.ytrun", str(record)],
         env=env,
         cwd=str(Path(__file__).resolve().parent.parent),
         stdout=subprocess.PIPE,
@@ -282,7 +282,7 @@ def test_pausing_a_youtube_job_is_not_recorded_as_a_failure(tmp_path, monkeypatc
 def test_a_saved_concurrency_reaches_a_real_daemon(env, tmp_path):
     """Everything else is checked against fakes. This asserts aria2 itself
     takes the new value on a running daemon."""
-    from dl import tomlio
+    from firelink import tomlio
 
     cfg, state = env
     client = daemon.ensure_running(cfg, state)
@@ -300,8 +300,8 @@ def test_a_saved_concurrency_reaches_a_real_daemon(env, tmp_path):
 
 
 def test_the_written_default_config_survives_a_round_trip(tmp_path):
-    """dl ships a heavily commented default. A save must not eat it."""
-    from dl import tomlio
+    """firelink ships a heavily commented default. A save must not eat it."""
+    from firelink import tomlio
 
     path = tmp_path / "config.toml"
     config.write_default(path)

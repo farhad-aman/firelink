@@ -2,9 +2,9 @@ import re
 
 import pytest
 
-from dl import theme
-from dl.format import cells
-from dl.tui.status import render_status, stats_from
+from firelink import theme
+from firelink.format import cells
+from firelink.tui.status import render_status, stats_from
 
 _MARKUP = re.compile(r"\[[^]]*\]")
 
@@ -144,7 +144,7 @@ def test_a_wide_bar_keeps_the_words(th):
 
 
 def test_the_elapsed_time_goes_before_the_counters_do(th):
-    """Which is still running matters more than how long dl has been open."""
+    """Which is still running matters more than how long firelink has been open."""
     out = render_status(stats_from(gstat(), 261), [], th, 44)
     assert "3" in out
     assert "4m 21s" not in out

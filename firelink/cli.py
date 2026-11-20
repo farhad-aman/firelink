@@ -33,7 +33,7 @@ def add_options(
         "split": str(cfg.limits.splits),
         "min-split-size": cfg.limits.min_split,
         "max-download-limit": cfg.limits.per_download,
-        # Per download rather than left to the daemon: dl adopts a running
+        # Per download rather than left to the daemon: firelink adopts a running
         # daemon rather than restarting it, so one started before torrents
         # existed would seed to 1:1 and sit at 100% looking stuck.
         "seed-time": "0",
@@ -111,13 +111,13 @@ def cmd_add(
     digest: str = "",
 ) -> tuple[int, list[str]]:
     if not urls:
-        print("dl: no URLs given", file=sys.stderr)
+        print("firelink: no URLs given", file=sys.stderr)
         return 1, []
     bad = [u for u in urls if not looks_like_url(u)]
     if bad:
         for value in bad:
-            print(f"dl: not a URL: {value!r}", file=sys.stderr)
-        print("dl: run `dl --help` for usage", file=sys.stderr)
+            print(f"firelink: not a URL: {value!r}", file=sys.stderr)
+        print("firelink: run `firelink --help` for usage", file=sys.stderr)
         return 1, []
     failures = 0
     gids: list[str] = []
@@ -134,7 +134,7 @@ def cmd_add(
             print(f"  {glyph('⏭', icons)}  skipped  {name or url}  — already there")
             continue
         if not ensure_writable(resolution.path):
-            print(f"dl: cannot write to {resolution.path}", file=sys.stderr)
+            print(f"firelink: cannot write to {resolution.path}", file=sys.stderr)
             failures += 1
             continue
         if decision == duplicates.OVERWRITE:
@@ -159,7 +159,7 @@ def cmd_add(
 
 
 # Of the stopped list, only failures. A removal lingers there for the life of
-# the daemon, and a finished download is in `dl history`, which outlives it.
+# the daemon, and a finished download is in `firelink history`, which outlives it.
 LISTED_WHEN_STOPPED = ("error",)
 
 
@@ -208,7 +208,7 @@ def _proxied(client, gid: str) -> bool:
 
 
 def ls_record(item: dict, client, cfg: Config) -> dict:
-    """One live download, as the shape `dl ls --json` prints.
+    """One live download, as the shape `firelink ls --json` prints.
 
     Deliberately not aria2's own status: that carries several dozen fields of
     which most are internal, and this has to stay readable a year from now.
@@ -248,7 +248,7 @@ def cmd_ls(
         pct = int(done * 100 / total) if total else 0
         name = _name_of(item) or "(pending)"
         # The badge goes last so every existing column keeps its position and
-        # `dl ls | grep paused` still works.
+        # `firelink ls | grep paused` still works.
         via = _proxy_badge(client, item.get("gid", ""), cfg)
         print(
             f"{item.get('gid', ''):<18} {item.get('status', ''):<9} {pct:>3}% "
@@ -291,7 +291,7 @@ def cmd_history(cfg: Config, log: Path, args: list[str]) -> int:
     counts = [a for a in wanted if a.isdigit()]
     query = " ".join(a for a in wanted if not a.isdigit())
     if len(counts) > 1:
-        print(f"dl: history takes one count, not {' and '.join(counts)}", file=sys.stderr)
+        print(f"firelink: history takes one count, not {' and '.join(counts)}", file=sys.stderr)
         return 1
     count = int(counts[0]) if counts else HISTORY_DEFAULT
 
@@ -375,7 +375,7 @@ def cmd_strays(state, confirm=None) -> int:
     if not found:
         print("  no stray daemons")
         return 0
-    print(f"  {len(found)} stray daemon{'s' if len(found) > 1 else ''}, unreachable by dl:")
+    print(f"  {len(found)} stray daemon{'s' if len(found) > 1 else ''}, unreachable by firelink:")
     for pid, port in found:
         print(f"    pid {pid}  on port {port}   (downloads it holds cannot be listed)")
     ask = confirm if confirm is not None else _ask_yes

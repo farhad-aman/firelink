@@ -1,6 +1,6 @@
 import json
 
-from dl import history
+from firelink import history
 
 
 def test_tail_of_missing_file_is_empty(tmp_path):

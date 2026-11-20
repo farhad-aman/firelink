@@ -2,11 +2,11 @@
 
 import pytest
 
-from dl import playlist
-from dl.tui import app as app_module
-from dl.tui import ytadd
-from dl.tui.app import DlApp
-from dl.tui.playlistscreen import PlaylistScreen
+from firelink import playlist
+from firelink.tui import app as app_module
+from firelink.tui import ytadd
+from firelink.tui.app import FirelinkApp
+from firelink.tui.playlistscreen import PlaylistScreen
 from tests.test_app import FakeClient
 
 PLAYLIST = "https://www.youtube.com/playlist?list=PLxyz"
@@ -52,7 +52,7 @@ async def open_playlist(app, pilot):
 
 
 async def test_a_playlist_url_asks_how_much_before_anything_else(cfg, listing, spawned):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -62,7 +62,7 @@ async def test_a_playlist_url_asks_how_much_before_anything_else(cfg, listing, s
 
 
 async def test_escape_at_the_count_queues_nothing(cfg, listing, spawned):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -76,7 +76,7 @@ async def test_accepting_asks_quality_once_then_spawns_one_job_per_video(
     cfg, listing, spawned
 ):
     """Five videos, one question. Asking five times is not a feature."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -100,7 +100,7 @@ async def test_accepting_asks_quality_once_then_spawns_one_job_per_video(
 
 async def test_every_job_carries_its_title_from_the_listing(cfg, listing, spawned):
     """The reason no probe is needed: the listing already said what these are."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -117,7 +117,7 @@ async def test_every_job_carries_its_title_from_the_listing(cfg, listing, spawne
 
 
 async def test_every_job_shares_the_one_destination_and_quality(cfg, listing, spawned):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -135,7 +135,7 @@ async def test_every_job_shares_the_one_destination_and_quality(cfg, listing, sp
 
 
 async def test_newest_only_takes_the_front_of_the_list(cfg, monkeypatch, spawned):
-    from dl import config as config_module
+    from firelink import config as config_module
 
     entries = [
         playlist.Entry(f"https://youtu.be/v{i}", f"Episode {i}") for i in range(1, 41)
@@ -143,7 +143,7 @@ async def test_newest_only_takes_the_front_of_the_list(cfg, monkeypatch, spawned
     monkeypatch.setattr(
         ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(entries, 0)
     )
-    app = DlApp(config_module.replace(cfg, newest=25), FakeClient())
+    app = FirelinkApp(config_module.replace(cfg, newest=25), FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -162,7 +162,7 @@ async def test_newest_only_takes_the_front_of_the_list(cfg, monkeypatch, spawned
 
 
 async def test_a_short_playlist_is_not_offered_a_newest_option(cfg, listing, spawned):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -175,7 +175,7 @@ async def test_a_listing_that_fails_says_so_and_queues_nothing(cfg, monkeypatch,
 
     monkeypatch.setattr(ytadd.playlist, "expand", refuse)
     notes = []
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
@@ -190,7 +190,7 @@ async def test_a_listing_that_fails_says_so_and_queues_nothing(cfg, monkeypatch,
 
 async def test_a_single_video_still_goes_through_the_probe(cfg, spawned, monkeypatch):
     """The collection path skips the probe; the single-video path must not."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept(["https://youtu.be/abc"])
@@ -200,7 +200,7 @@ async def test_a_single_video_still_goes_through_the_probe(cfg, spawned, monkeyp
 
 
 async def test_a_watch_url_inside_a_playlist_is_not_expanded(cfg, listing, spawned):
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept(["https://www.youtube.com/watch?v=abc&list=PLxyz"])
@@ -214,8 +214,8 @@ async def test_a_big_playlist_starts_only_as_many_as_the_cap_allows(
 ):
     """The point of the cap: accepting a collection used to start every video
     at the same moment, one supervisor process each."""
-    from dl import config as config_module
-    from dl import ytqueue
+    from firelink import config as config_module
+    from firelink import ytqueue
 
     entries = [
         playlist.Entry(f"https://youtu.be/v{i}", f"Episode {i}") for i in range(1, 21)
@@ -229,7 +229,7 @@ async def test_a_big_playlist_starts_only_as_many_as_the_cap_allows(
     capped = config_module.replace(
         cfg, general=config_module.replace(cfg.general, max_concurrent=3)
     )
-    app = DlApp(capped, FakeClient())
+    app = FirelinkApp(capped, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -244,7 +244,7 @@ async def test_a_big_playlist_starts_only_as_many_as_the_cap_allows(
                 break
         await pilot.pause()
 
-    from dl import ytjob
+    from firelink import ytjob
 
     records = ytjob.list_jobs(state / "yt")
     assert len(records) == 20, "every video is on disk"
@@ -254,7 +254,7 @@ async def test_a_big_playlist_starts_only_as_many_as_the_cap_allows(
 
 async def test_the_collection_limit_comes_from_the_config(cfg, monkeypatch, spawned):
     """It was a fixed 25 with no way to ask for more."""
-    from dl import config as config_module
+    from firelink import config as config_module
 
     entries = [
         playlist.Entry(f"https://youtu.be/v{i}", f"Episode {i}") for i in range(1, 300)
@@ -262,7 +262,7 @@ async def test_the_collection_limit_comes_from_the_config(cfg, monkeypatch, spaw
     monkeypatch.setattr(
         ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(entries, 0)
     )
-    app = DlApp(config_module.replace(cfg, newest=150), FakeClient())
+    app = FirelinkApp(config_module.replace(cfg, newest=150), FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -272,7 +272,7 @@ async def test_the_collection_limit_comes_from_the_config(cfg, monkeypatch, spaw
 
 async def test_a_collection_smaller_than_the_limit_offers_no_shortcut(cfg, listing, spawned):
     """Five videos with a limit of a hundred: "newest 100" would mean nothing."""
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -283,7 +283,7 @@ async def test_a_collection_smaller_than_the_limit_offers_no_shortcut(cfg, listi
 async def test_expanding_waits_as_long_as_a_probe_would(cfg, monkeypatch, spawned):
     """A channel of thousands is one request, but a slow one. It used to give
     up after a fixed two minutes with no way to wait longer."""
-    from dl import config as config_module
+    from firelink import config as config_module
 
     seen = {}
 
@@ -300,7 +300,7 @@ async def test_expanding_waits_as_long_as_a_probe_would(cfg, monkeypatch, spawne
         )
 
     monkeypatch.setattr(ytadd.playlist, "expand", record)
-    app = DlApp(config_module.replace(cfg, probe_timeout=600), FakeClient())
+    app = FirelinkApp(config_module.replace(cfg, probe_timeout=600), FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         await open_playlist(app, pilot)
@@ -325,7 +325,7 @@ class EitherWay:
 
 @pytest.fixture
 def ambiguous_site(monkeypatch):
-    from dl import ytdlp
+    from firelink import ytdlp
 
     monkeypatch.setattr(ytdlp, "_classes", None)
     monkeypatch.setattr(ytdlp, "_load", lambda: [EitherWay])
@@ -346,7 +346,7 @@ async def test_an_ambiguous_url_holding_one_item_skips_the_collection_screen(
     one = [playlist.Entry(AMBIGUOUS, "Just One")]
     monkeypatch.setattr(ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(one, 0))
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept([AMBIGUOUS])
@@ -366,7 +366,7 @@ async def test_an_ambiguous_url_holding_many_shows_the_collection_screen(
     ]
     monkeypatch.setattr(ytadd.playlist, "expand", lambda *a, **k: playlist.Listing(many, 0))
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept([AMBIGUOUS])
@@ -420,13 +420,13 @@ class BrokenSite:
 async def test_a_broken_extractor_is_refused_before_anything_is_fetched(
     cfg, spawned, monkeypatch
 ):
-    from dl import ytdlp
+    from firelink import ytdlp
 
     monkeypatch.setattr(ytdlp, "_classes", None)
     monkeypatch.setattr(ytdlp, "_load", lambda: [BrokenSite])
     notes = []
 
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
@@ -441,10 +441,10 @@ async def test_the_options_screen_opens_without_waiting_for_the_probe(
     cfg, spawned, monkeypatch
 ):
     """Eight to twelve seconds is too long to hold the screen shut."""
-    from dl import formats
+    from firelink import formats
 
     monkeypatch.setattr(formats, "probe", lambda *a, **k: None)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept(["https://youtu.be/abc"])
@@ -453,15 +453,15 @@ async def test_the_options_screen_opens_without_waiting_for_the_probe(
 
 
 async def test_the_offer_reaches_the_open_screen(cfg, spawned, monkeypatch):
-    from dl import formats
-    from dl.formats import Offer
+    from firelink import formats
+    from firelink.formats import Offer
 
     monkeypatch.setattr(
         formats,
         "probe",
         lambda *a, **k: Offer(heights=(), bitrates=(128, 96), containers=("mp3",)),
     )
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept(["https://youtu.be/abc"])
@@ -474,10 +474,10 @@ async def test_the_offer_reaches_the_open_screen(cfg, spawned, monkeypatch):
 
 
 async def test_a_failed_probe_leaves_the_screen_alone(cfg, spawned, monkeypatch):
-    from dl import formats
+    from firelink import formats
 
     monkeypatch.setattr(formats, "probe", lambda *a, **k: None)
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept(["https://youtu.be/abc"])
@@ -491,13 +491,13 @@ async def test_a_failed_probe_leaves_the_screen_alone(cfg, spawned, monkeypatch)
 
 async def test_closing_before_the_probe_lands_does_not_crash(cfg, spawned, monkeypatch):
     """The worker returns to a screen that is gone."""
-    from dl import formats
-    from dl.formats import Offer
+    from firelink import formats
+    from firelink.formats import Offer
 
     monkeypatch.setattr(
         formats, "probe", lambda *a, **k: Offer(heights=(720,), bitrates=(128,))
     )
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         app._accept(["https://youtu.be/abc"])

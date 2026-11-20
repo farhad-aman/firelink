@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from dl import config, spotflow
-from dl.spotify import Track
-from dl.spotmatch import Candidate, Scored
-from dl.spotresolve import Match
+from firelink import config, spotflow
+from firelink.spotify import Track
+from firelink.spotmatch import Candidate, Scored
+from firelink.spotresolve import Match
 
 
 def match(title="T", url="https://y.test/1", confident=True, choices=True):

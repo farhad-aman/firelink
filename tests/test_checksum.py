@@ -2,7 +2,7 @@
 
 import pytest
 
-from dl import checksum
+from firelink import checksum
 
 SHA256 = "062af9ccd890ba3d067ca7150278bcc420069bd82f6e41161029303dfd6d661e"
 MD5 = "6134696ca1b050d4564d58a18aa9d35a"
@@ -108,7 +108,7 @@ def _failed(**over):
 def test_the_bad_bytes_are_removed(tmp_path):
     """A file that failed its checksum is provably not what was asked for, and
     leaving it complete on disk means a retry resumes it and changes nothing."""
-    from dl import hook
+    from firelink import hook
 
     landed = tmp_path / "a.iso"
     landed.write_bytes(b"wrong")
@@ -121,7 +121,7 @@ def test_the_bad_bytes_are_removed(tmp_path):
 
 
 def test_a_file_that_failed_for_another_reason_is_left_alone(tmp_path):
-    from dl import hook
+    from firelink import hook
 
     landed = tmp_path / "a.iso"
     landed.write_bytes(b"partial")
@@ -130,20 +130,20 @@ def test_a_file_that_failed_for_another_reason_is_left_alone(tmp_path):
 
 
 def test_discarding_says_so_in_the_record(sandbox_cfg):
-    from dl import hook
+    from firelink import hook
 
     record = hook.build_record(_failed(), "error", sandbox_cfg)
     assert checksum.MISMATCH in record["error"]
 
 
 def test_discarding_a_file_that_is_already_gone_is_quiet(tmp_path):
-    from dl import hook
+    from firelink import hook
 
     hook.discard_corrupt(_failed(files=[{"path": str(tmp_path / "never"), "uris": []}]))
 
 
 def test_a_completed_download_is_never_discarded(tmp_path):
-    from dl import hook
+    from firelink import hook
 
     landed = tmp_path / "a.iso"
     landed.write_bytes(b"good")

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from dl import config, routing
+from firelink import config, routing
 
 
 @pytest.fixture
@@ -180,18 +180,18 @@ def test_a_star_prefix_still_means_subdomains_only():
 def test_headers_from_every_matching_rule_are_merged():
     cfg = header_cfg({
         "example.com": {"Referer": "https://example.com/"},
-        "dl.example.com": {"X-Token": "abc"},
+        "firelink.example.com": {"X-Token": "abc"},
     })
-    got = routing.headers_for("https://dl.example.com/a.iso", cfg)
+    got = routing.headers_for("https://firelink.example.com/a.iso", cfg)
     assert got == {"Referer": "https://example.com/", "X-Token": "abc"}
 
 
 def test_the_more_specific_rule_wins_a_clash():
     cfg = header_cfg({
         "example.com": {"Referer": "general"},
-        "dl.example.com": {"Referer": "specific"},
+        "firelink.example.com": {"Referer": "specific"},
     })
-    assert routing.headers_for("https://dl.example.com/a", cfg)["Referer"] == "specific"
+    assert routing.headers_for("https://firelink.example.com/a", cfg)["Referer"] == "specific"
 
 
 def test_a_url_without_a_host_gets_no_headers():

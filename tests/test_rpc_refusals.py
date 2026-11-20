@@ -7,9 +7,9 @@ aria2 is asked about it. Every key that reaches the daemon has to survive that.
 import pytest
 from textual.widgets import Input
 
-from dl import config as config_module
-from dl.rpc import Aria2Error, Aria2Unreachable
-from dl.tui.app import DlApp
+from firelink import config as config_module
+from firelink.rpc import Aria2Error, Aria2Unreachable
+from firelink.tui.app import FirelinkApp
 from tests.test_app import FakeClient
 
 GONE = Aria2Error(1, "GID g1 is not found")
@@ -32,11 +32,11 @@ def refusing(error, *methods) -> FakeClient:
     return client
 
 
-async def survives(cfg, client, key, tmp_path, monkeypatch) -> DlApp:
-    from dl.tui import app as app_module
+async def survives(cfg, client, key, tmp_path, monkeypatch) -> FirelinkApp:
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press(key)
@@ -66,11 +66,11 @@ async def test_reorder_survives_a_refusal(cfg, tmp_path, monkeypatch):
 
 
 async def test_pause_all_reports_once_however_many_rows_refuse(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     notes = []
-    app = DlApp(cfg, refusing(GONE, "pause"))
+    app = FirelinkApp(cfg, refusing(GONE, "pause"))
     async with app.run_test() as pilot:
         await pilot.pause()
         monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
@@ -81,11 +81,11 @@ async def test_pause_all_reports_once_however_many_rows_refuse(cfg, tmp_path, mo
 
 
 async def test_a_working_pause_all_says_nothing(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     notes = []
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
@@ -96,7 +96,7 @@ async def test_a_working_pause_all_says_nothing(cfg, tmp_path, monkeypatch):
 
 async def test_pause_all_keeps_going_after_one_row_refuses(cfg, tmp_path, monkeypatch):
     """A refusal on the first row must not strand the rest of the queue."""
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     client = FakeClient()
@@ -108,7 +108,7 @@ async def test_pause_all_keeps_going_after_one_row_refuses(cfg, tmp_path, monkey
             raise GONE
 
     client.pause = sometimes
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("p")
@@ -117,10 +117,10 @@ async def test_pause_all_keeps_going_after_one_row_refuses(cfg, tmp_path, monkey
 
 
 async def test_the_limit_key_survives_a_refused_change(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
-    app = DlApp(cfg, refusing(GONE, "change_option"))
+    app = FirelinkApp(cfg, refusing(GONE, "change_option"))
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("l")
@@ -132,11 +132,11 @@ async def test_the_limit_key_survives_a_refused_change(cfg, tmp_path, monkeypatc
 
 
 async def test_a_refused_limit_does_not_claim_it_worked(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     notes = []
-    app = DlApp(cfg, refusing(GONE, "change_option"))
+    app = FirelinkApp(cfg, refusing(GONE, "change_option"))
     async with app.run_test() as pilot:
         await pilot.pause()
         monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
@@ -149,11 +149,11 @@ async def test_a_refused_limit_does_not_claim_it_worked(cfg, tmp_path, monkeypat
 
 
 async def test_a_working_limit_still_confirms(cfg, tmp_path, monkeypatch):
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
     notes = []
-    app = DlApp(cfg, FakeClient())
+    app = FirelinkApp(cfg, FakeClient())
     async with app.run_test() as pilot:
         await pilot.pause()
         monkeypatch.setattr(app, "notify", lambda msg, **kw: notes.append(msg))
@@ -168,10 +168,10 @@ async def test_a_working_limit_still_confirms(cfg, tmp_path, monkeypatch):
 async def test_adding_a_url_survives_a_refused_add(cfg, tmp_path, monkeypatch):
     from textual.widgets import Button, TextArea
 
-    from dl.tui import app as app_module
+    from firelink.tui import app as app_module
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path)
-    app = DlApp(cfg, refusing(GONE, "add_uri"))
+    app = FirelinkApp(cfg, refusing(GONE, "add_uri"))
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("a")

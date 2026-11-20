@@ -4,9 +4,9 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.widgets import Input, Static
 
-from dl import theme
-from dl.destinations import Candidate
-from dl.tui.picker import PickerScreen
+from firelink import theme
+from firelink.destinations import Candidate
+from firelink.tui.picker import PickerScreen
 
 
 @pytest.fixture
@@ -197,7 +197,7 @@ async def test_header_shows_filename_and_position(cfg, tmp_path):
 async def test_the_list_scrolls_so_the_cursor_stays_visible(cfg, tmp_path):
     """With 8 built-in categories the window is full, so later candidates —
     including the current directory — are only reachable if it scrolls."""
-    from dl.tui.picker import MAX_ROWS
+    from firelink.tui.picker import MAX_ROWS
 
     screen = make(cfg, tmp_path)
     app = Host(screen)
@@ -255,7 +255,7 @@ async def test_an_unknown_user_expansion_does_not_crash(cfg, tmp_path):
 
 
 async def test_ctrl_c_cancels_the_whole_batch(cfg, tmp_path):
-    from dl.tui.picker import CANCEL
+    from firelink.tui.picker import CANCEL
 
     app = Host(make(cfg, tmp_path))
     async with app.run_test() as pilot:

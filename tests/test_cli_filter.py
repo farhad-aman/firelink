@@ -1,4 +1,4 @@
-"""`dl ls ubuntu` and `dl history ubuntu`.
+"""`firelink ls ubuntu` and `firelink history ubuntu`.
 
 Both reuse the matching the dashboard uses, so a name that filters in the TUI
 filters the same way on the command line.
@@ -6,7 +6,7 @@ filters the same way on the command line.
 
 import pytest
 
-from dl import cli, history
+from firelink import cli, history
 
 
 @pytest.fixture

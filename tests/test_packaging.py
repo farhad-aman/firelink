@@ -4,10 +4,10 @@ import tomllib
 PYPROJECT = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
 
 
-def test_a_dl_command_is_declared():
+def test_a_firelink_command_is_declared():
     """Homebrew builds the formula's executables from console scripts. Without
     this entry point the formula would need a shim written by hand."""
-    assert PYPROJECT["project"]["scripts"]["dl"] == "dl.__main__:main"
+    assert PYPROJECT["project"]["scripts"]["firelink"] == "firelink.__main__:main"
 
 
 def test_the_licence_is_declared():

@@ -169,7 +169,7 @@ class DeleteModal(ArrowKeys, ModalScreen[str | None]):
 
 
 class DuplicateModal(ArrowKeys, ModalScreen[str | None]):
-    """Dismisses with a dl.duplicates decision, or None to cancel the batch.
+    """Dismisses with a firelink.duplicates decision, or None to cancel the batch.
 
     Which buttons appear depends on the kind of collision: a name that matches
     while the source does not gets a blunt warning, because overwriting there

@@ -245,7 +245,7 @@ class SettingsMenuScreen(IconMixin, ModalScreen[None]):
             self.blocked = True
             self.problem = (
                 f"  {self._g('⚠')}  config.toml has a syntax error on line {exc.line} —\n"
-                f"     fix it before editing here. dl is running on defaults\n"
+                f"     fix it before editing here. firelink is running on defaults\n"
                 f"     until it parses."
             )
         except OSError:

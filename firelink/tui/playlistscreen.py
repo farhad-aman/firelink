@@ -80,7 +80,7 @@ class PlaylistScreen(ModalScreen[list[int] | None]):
         line = f"  {name}\n  {self.count} item{'s' if self.count != 1 else ''}"
         if self.unavailable:
             # Said plainly, because the count on screen will not match the
-            # one the site shows and that looks like dl losing some.
+            # one the site shows and that looks like firelink losing some.
             line += f"\n  {self.unavailable} more are private or deleted"
         return line
 

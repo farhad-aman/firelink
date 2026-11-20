@@ -1,6 +1,6 @@
 import subprocess
 
-from dl.tui import modals
+from firelink.tui import modals
 
 
 def test_writing_puts_the_text_on_the_clipboard(monkeypatch):

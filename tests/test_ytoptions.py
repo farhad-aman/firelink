@@ -2,9 +2,9 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-from dl.formats import Offer
-from dl.tui.ytoptions import YouTubeOptionsScreen
-from dl.youtube import DEFAULTS, VIDEO_CHOICES, Choices
+from firelink.formats import Offer
+from firelink.tui.ytoptions import YouTubeOptionsScreen
+from firelink.youtube import DEFAULTS, VIDEO_CHOICES, Choices
 
 
 class Host(App):

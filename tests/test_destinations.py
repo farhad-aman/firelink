@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from dl import config
-from dl.destinations import (
+from firelink import config
+from firelink.destinations import (
     Candidate,
     candidates,
     create_candidate,
@@ -57,7 +57,7 @@ def test_candidates_put_the_routed_default_first(cfg):
 
 
 def test_candidates_note_for_an_uncategorised_file(cfg):
-    from dl.routing import OTHER
+    from firelink.routing import OTHER
 
     items = candidates("README", Path("/downloads"), OTHER, cfg, [], Path("/cwd"))
     assert items[0].note == "default folder"

@@ -3,8 +3,8 @@ from dataclasses import asdict
 
 import pytest
 
-from dl import ytrun
-from dl.youtube import DEFAULTS
+from firelink import ytrun
+from firelink.youtube import DEFAULTS
 
 DEFAULTS_DICT = asdict(DEFAULTS)
 
@@ -170,8 +170,8 @@ def test_the_default_probe_timeout_survives_a_slow_proxy():
 def test_a_finished_youtube_download_runs_the_completion_hook(tmp_path, monkeypatch):
     """Same contract as an aria2 download: yt-dlp jobs never reached the hook
     because they finish on a completely different code path."""
-    from dl import config, ytjob
-    from dl.youtube import DEFAULTS
+    from firelink import config, ytjob
+    from firelink.youtube import DEFAULTS
 
     seen = []
     monkeypatch.setattr(ytrun, "after_complete", lambda cfg, record, state: seen.append(record))
@@ -196,8 +196,8 @@ def test_a_finished_youtube_download_runs_the_completion_hook(tmp_path, monkeypa
 
 
 def test_a_failed_youtube_download_does_not_run_the_hook(tmp_path, monkeypatch):
-    from dl import config, ytjob
-    from dl.youtube import DEFAULTS
+    from firelink import config, ytjob
+    from firelink.youtube import DEFAULTS
 
     seen = []
     monkeypatch.setattr(ytrun, "after_complete", lambda cfg, record, state: seen.append(record))

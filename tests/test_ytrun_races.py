@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from dl import config, youtube, ytjob, ytqueue, ytrun
+from firelink import config, youtube, ytjob, ytqueue, ytrun
 
 
 @pytest.fixture(autouse=True)

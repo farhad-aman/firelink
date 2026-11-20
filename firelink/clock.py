@@ -14,7 +14,7 @@ _OLDER = "%Y-%m-%d %H:%M"
 def _local(epoch: Epoch) -> datetime | None:
     """A stored timestamp read back in the machine's own timezone.
 
-    Every time dl writes is Unix epoch, which is UTC by definition. Reading it
+    Every time firelink writes is Unix epoch, which is UTC by definition. Reading it
     as UTC and converting makes that explicit rather than leaning on
     fromtimestamp's local-time default, so the same log shows 12:00 in London
     and 15:30 in Tehran.

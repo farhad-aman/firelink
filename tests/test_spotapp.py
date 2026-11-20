@@ -1,9 +1,9 @@
 import pytest
 
-from dl import config, spotify
-from dl.spotmatch import Candidate, Scored
-from dl.spotresolve import Match
-from dl.tui import spotadd, spotapp
+from firelink import config, spotify
+from firelink.spotmatch import Candidate, Scored
+from firelink.spotresolve import Match
+from firelink.tui import spotadd, spotapp
 
 
 def a_track(title="T"):
@@ -103,7 +103,7 @@ async def test_tracks_with_no_match_are_named_in_the_summary(monkeypatch, tmp_pa
 def test_run_spotify_watches_what_it_queued(monkeypatch, tmp_path):
     """A queued track with no live view is a shell that prints one line and
     leaves a failure to be discovered later, or never."""
-    from dl import instance
+    from firelink import instance
 
     watched = {}
 
@@ -135,7 +135,7 @@ def test_run_spotify_watches_what_it_queued(monkeypatch, tmp_path):
 
 
 def test_run_spotify_skips_the_live_view_when_nothing_queued(monkeypatch, tmp_path):
-    from dl import instance
+    from firelink import instance
 
     monkeypatch.setattr(
         spotapp, "watch", lambda *a, **k: pytest.fail("watched an empty queue")

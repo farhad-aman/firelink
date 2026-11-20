@@ -1,13 +1,13 @@
 """Deleting from the dashboard must not leave the download in the stopped list.
 
-aria2.remove moves it there rather than erasing it, and `dl ls` was showing
+aria2.remove moves it there rather than erasing it, and `firelink ls` was showing
 every past deletion for the life of the daemon.
 """
 
 import pytest
 
-from dl.tui import app as app_module
-from dl.tui.app import DlApp
+from firelink.tui import app as app_module
+from firelink.tui.app import FirelinkApp
 from tests.test_app import FakeClient
 
 
@@ -34,7 +34,7 @@ class Purging(FakeClient):
 
 async def test_deleting_from_the_list_forgets_the_result(cfg):
     client = Purging()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()
@@ -48,7 +48,7 @@ async def test_deleting_from_the_list_forgets_the_result(cfg):
 
 async def test_a_daemon_without_the_call_does_not_break_deleting(cfg):
     client = FakeClient()
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await app.refresh_data()

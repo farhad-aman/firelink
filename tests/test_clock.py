@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from dl import clock
-from dl.format import DASH
+from firelink import clock
+from firelink.format import DASH
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def tehran(monkeypatch):
 
 
 def epoch_of(text: str) -> int:
-    """A UTC wall-clock reading, as the integer dl would store."""
+    """A UTC wall-clock reading, as the integer firelink would store."""
     return int(datetime.strptime(text, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc).timestamp())
 
 

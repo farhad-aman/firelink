@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from dl import config, theme
-from dl.routing import OTHER
-from dl.rpc import Aria2Error, Aria2Unreachable
-from dl.tui.app import DlApp
-from dl.tui.table import DownloadTable, Row
+from firelink import config, theme
+from firelink.routing import OTHER
+from firelink.rpc import Aria2Error, Aria2Unreachable
+from firelink.tui.app import FirelinkApp
+from firelink.tui.table import DownloadTable, Row
 from tests.test_app import FakeClient
 
 
@@ -135,7 +135,7 @@ class LostClient(FakeClient):
 
 
 async def press_move(cfg, client, key):
-    app = DlApp(cfg, client)
+    app = FirelinkApp(cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press(key)
@@ -156,7 +156,7 @@ async def test_a_lost_daemon_during_a_move_does_not_bring_it_down(sandbox_cfg):
 
 async def test_a_move_that_works_is_still_sent(sandbox_cfg):
     client = FakeClient()
-    app = DlApp(sandbox_cfg, client)
+    app = FirelinkApp(sandbox_cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("J")

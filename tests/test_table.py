@@ -1,7 +1,7 @@
 import pytest
 
-from dl import config, theme
-from dl.tui.table import Row, bar_width_for, columns_for_width, render_row, row_from_status
+from firelink import config, theme
+from firelink.tui.table import Row, bar_width_for, columns_for_width, render_row, row_from_status
 
 
 @pytest.fixture
@@ -138,7 +138,7 @@ def test_render_row_leaves_a_direct_download_unbadged(cfg, th):
 
 
 def test_render_row_badges_without_emoji_in_a_mono_theme(cfg):
-    from dl import theme
+    from firelink import theme
 
     mono = theme.THEMES["mono"]
     proxied = render_row(row_from_status(status(), cfg, proxied=True), mono, 100, False, 0)
@@ -191,7 +191,7 @@ def test_render_row_narrow_hides_folder(cfg, th):
 
 
 def test_render_row_queued_uses_spinner_frame(cfg, th):
-    from dl.format import SPINNER
+    from firelink.format import SPINNER
 
     row = row_from_status(status(status="waiting", downloadSpeed="0"), cfg)
     joined = " ".join(render_row(row, th, 100, selected=False, frame=3))
@@ -216,13 +216,13 @@ def yt_job(**over):
 
 
 def test_row_from_job_marks_a_proxied_youtube_download(cfg):
-    from dl.tui.table import row_from_job
+    from firelink.tui.table import row_from_job
 
     assert row_from_job(yt_job(proxy="http://127.0.0.1:2080"), cfg).proxied is True
 
 
 def test_row_from_job_leaves_a_direct_youtube_download_unbadged(cfg):
-    from dl.tui.table import row_from_job
+    from firelink.tui.table import row_from_job
 
     assert row_from_job(yt_job(), cfg).proxied is False
 
@@ -244,13 +244,13 @@ def test_row_from_status_carries_the_recorded_start_time(cfg):
 
 
 def test_row_from_job_takes_its_start_time_from_the_job(cfg):
-    from dl.tui.table import row_from_job
+    from firelink.tui.table import row_from_job
 
     assert row_from_job(yt_job(started=1234), cfg).started == 1234
 
 
 def test_row_from_job_survives_a_job_with_no_start_time(cfg):
-    from dl.tui.table import row_from_job
+    from firelink.tui.table import row_from_job
 
     job = yt_job()
     job.pop("started", None)
@@ -276,7 +276,7 @@ def test_a_narrow_row_drops_the_added_time(cfg, th):
 
 
 def test_an_unrecorded_start_time_renders_as_a_dash(cfg, th):
-    from dl.format import DASH
+    from firelink.format import DASH
 
     joined = " ".join(render_row(row_from_status(status(), cfg), th, 120, False, 0))
     assert DASH in joined
@@ -355,20 +355,20 @@ def test_a_plain_download_is_unaffected(cfg):
 def test_row_from_job_categorises_an_audio_download_as_audio(cfg):
     """Every yt-dlp job read as video, so a Spotify m4a landed in the Music
     folder wearing the video badge."""
-    from dl.tui.table import row_from_job
+    from firelink.tui.table import row_from_job
 
     job = yt_job(choices={"container": "m4a"}, outname="X - Song.m4a")
     assert row_from_job(job, cfg).category.name == "audio"
 
 
 def test_row_from_job_still_categorises_a_video_download_as_video(cfg):
-    from dl.tui.table import row_from_job
+    from firelink.tui.table import row_from_job
 
     assert row_from_job(yt_job(), cfg).category.name == "video"
 
 
 def test_row_from_job_categorises_by_the_file_once_it_has_landed(cfg):
-    from dl.tui.table import row_from_job
+    from firelink.tui.table import row_from_job
 
     job = yt_job(choices={"container": "m4a"}, file="/tmp/Music/X - Song.m4a")
     assert row_from_job(job, cfg).category.name == "audio"

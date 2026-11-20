@@ -214,7 +214,7 @@ def after_complete(cfg: Config, record: dict, state: Path) -> str:
 
 def _spawn_sleeper(state: Path, generation: int, delay: int) -> None:
     subprocess.Popen(
-        [sys.executable, "-m", "dl.hook", "idle", str(generation), str(delay), str(state)],
+        [sys.executable, "-m", "firelink.hook", "idle", str(generation), str(delay), str(state)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         stdin=subprocess.DEVNULL,
@@ -275,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run_idle(int(args[1]), int(args[2]), Path(args[3]))
 
     # The daemon tells its hook where to write, because nothing in the
-    # environment can move dl's state any more.
+    # environment can move firelink's state any more.
     where = _take(args, "--state")
     config_file = _take(args, "--config")
     state = Path(where) if where else STATE_DIR

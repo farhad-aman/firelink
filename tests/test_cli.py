@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from dl import cli, config, routing
+from firelink import cli, config, routing
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def test_cmd_add_without_proxy_sends_nothing_extra(cfg):
 
 
 def test_add_options_rename_keeps_auto_renaming(cfg):
-    from dl.duplicates import RENAME
+    from firelink.duplicates import RENAME
 
     resolution = routing.resolve("https://e.com/a.iso", "a.iso", cfg)
     options = cli.add_options(cfg, resolution, decision=RENAME)
@@ -104,14 +104,14 @@ def test_add_options_rename_keeps_auto_renaming(cfg):
 def test_add_options_rename_turns_off_resume(cfg):
     """--continue resumes into the existing file instead of renaming, which
     destroys the very copy rename exists to preserve."""
-    from dl.duplicates import RENAME
+    from firelink.duplicates import RENAME
 
     resolution = routing.resolve("https://e.com/a.iso", "a.iso", cfg)
     assert cli.add_options(cfg, resolution, decision=RENAME)["continue"] == "false"
 
 
 def test_add_options_leave_resume_alone_for_other_decisions(cfg):
-    from dl.duplicates import OVERWRITE
+    from firelink.duplicates import OVERWRITE
 
     resolution = routing.resolve("https://e.com/a.iso", "a.iso", cfg)
     assert "continue" not in cli.add_options(cfg, resolution, decision=OVERWRITE)
@@ -119,7 +119,7 @@ def test_add_options_leave_resume_alone_for_other_decisions(cfg):
 
 
 def test_add_options_overwrite_reuses_the_same_name(cfg):
-    from dl.duplicates import OVERWRITE
+    from firelink.duplicates import OVERWRITE
 
     resolution = routing.resolve("https://e.com/a.iso", "a.iso", cfg)
     options = cli.add_options(cfg, resolution, decision=OVERWRITE)
@@ -135,7 +135,7 @@ def test_add_options_without_a_decision_stay_out_of_the_way(cfg):
 
 
 def test_cmd_add_skips_a_url_the_user_declined(cfg, capsys):
-    from dl.duplicates import SKIP
+    from firelink.duplicates import SKIP
 
     client = FakeClient()
     rc, gids = cli.cmd_add(
@@ -148,7 +148,7 @@ def test_cmd_add_skips_a_url_the_user_declined(cfg, capsys):
 
 
 def test_cmd_add_skipping_everything_queues_nothing(cfg):
-    from dl.duplicates import SKIP
+    from firelink.duplicates import SKIP
 
     client = FakeClient()
     rc, gids = cli.cmd_add(["https://e.com/a.iso"], cfg, client, None, decisions=[SKIP])
@@ -158,7 +158,7 @@ def test_cmd_add_skipping_everything_queues_nothing(cfg):
 
 
 def test_cmd_add_overwrite_deletes_the_file_it_replaces(cfg, tmp_path):
-    from dl.duplicates import OVERWRITE
+    from firelink.duplicates import OVERWRITE
 
     victim = tmp_path / "a.iso"
     victim.write_text("old")
@@ -174,7 +174,7 @@ def test_cmd_add_overwrite_deletes_the_file_it_replaces(cfg, tmp_path):
 
 
 def test_cmd_add_overwrite_evicts_an_unfinished_duplicate(cfg, tmp_path):
-    from dl.duplicates import OVERWRITE
+    from firelink.duplicates import OVERWRITE
 
     victim = tmp_path / "a.iso"
     victim.write_text("partial")
@@ -498,7 +498,7 @@ def test_ls_uses_a_text_badge_under_the_mono_theme(sandbox_cfg, capsys):
 
 
 def test_ls_keeps_the_existing_columns_where_they_were(sandbox_cfg, capsys):
-    """`dl ls | grep paused` has to keep working, so the badge goes on the end."""
+    """`firelink ls | grep paused` has to keep working, so the badge goes on the end."""
     client = OptionClient({"g1": {"all-proxy": "http://127.0.0.1:2080"}})
     client.active = [proxied_status()]
     cli.cmd_ls(sandbox_cfg, client, use_color=False)
@@ -510,7 +510,7 @@ def test_ls_keeps_the_existing_columns_where_they_were(sandbox_cfg, capsys):
 
 def test_ls_survives_a_daemon_that_will_not_say(sandbox_cfg, capsys):
     """Options are a second round trip; losing it must not lose the listing."""
-    from dl.rpc import Aria2Unreachable
+    from firelink.rpc import Aria2Unreachable
 
     class Refusing(OptionClient):
         def get_option(self, gid):
@@ -539,7 +539,7 @@ def hist(**over):
 
 
 def write_history(tmp_path, records):
-    from dl import history
+    from firelink import history
 
     log = tmp_path / "history.jsonl"
     for record in records:

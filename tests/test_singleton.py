@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from dl import daemon, instance
+from firelink import daemon, instance
 
 
 def test_there_is_one_port_not_a_range():
@@ -20,7 +20,7 @@ def test_there_is_one_port_not_a_range():
 
 
 def test_nothing_in_the_environment_can_move_the_app(monkeypatch):
-    """dl is one app in one place. Every variable here once relocated its
+    """firelink is one app in one place. Every variable here once relocated its
     state, its config or its port, and each was a way to run a second copy.
 
     Isolating a whole run is a container's job, not a variable's.
@@ -36,17 +36,17 @@ def test_nothing_in_the_environment_can_move_the_app(monkeypatch):
     ):
         monkeypatch.setenv(name, value)
 
-    fresh_config = importlib.reload(importlib.import_module("dl.config"))
-    fresh_daemon = importlib.reload(importlib.import_module("dl.daemon"))
+    fresh_config = importlib.reload(importlib.import_module("firelink.config"))
+    fresh_daemon = importlib.reload(importlib.import_module("firelink.daemon"))
     try:
         home = Path.home()
-        assert fresh_config.STATE_DIR == home / ".local" / "state" / "dl"
-        assert fresh_config.CONFIG_FILE == home / ".config" / "dl" / "config.toml"
+        assert fresh_config.STATE_DIR == home / ".local" / "state" / "firelink"
+        assert fresh_config.CONFIG_FILE == home / ".config" / "firelink" / "config.toml"
         assert fresh_daemon.PORT == 6810
     finally:
         monkeypatch.undo()
-        importlib.reload(importlib.import_module("dl.config"))
-        importlib.reload(importlib.import_module("dl.daemon"))
+        importlib.reload(importlib.import_module("firelink.config"))
+        importlib.reload(importlib.import_module("firelink.daemon"))
 
 
 def test_the_shim_carries_the_paths_rather_than_exporting_them(tmp_path):
@@ -96,7 +96,7 @@ def test_a_pid_that_is_gone_is_not_alive():
 
 
 class Lock:
-    """The dashboard lock, which is what stops a second `dl` window."""
+    """The dashboard lock, which is what stops a second `firelink` window."""
 
 
 def test_the_lock_is_taken_and_released(tmp_path):
@@ -133,7 +133,7 @@ def test_a_lock_left_by_a_dead_process_is_taken_over(tmp_path):
 
 
 def test_a_corrupt_lock_is_taken_over(tmp_path):
-    (tmp_path / "dl.lock").write_text("nonsense")
+    (tmp_path / "firelink.lock").write_text("nonsense")
     assert instance.acquire(tmp_path) is True
 
 

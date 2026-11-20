@@ -4,7 +4,7 @@ import base64
 
 import pytest
 
-from dl import torrent
+from firelink import torrent
 
 MAGNET = "magnet:?xt=urn:btih:481b6e3617be4c88f96cb25e47c9d8272130071e"
 
@@ -122,7 +122,7 @@ def test_rubbish_is_not_a_torrent(value):
 
 def test_the_daemon_is_told_to_stop_when_the_download_is_done(tmp_path):
     """Seeding was a choice, and the choice was not to."""
-    from dl import config, daemon
+    from firelink import config, daemon
 
     args = daemon.aria2_args(config.defaults(), tmp_path, 6810, "secret")
     assert "--seed-time=0" in args
@@ -130,7 +130,7 @@ def test_the_daemon_is_told_to_stop_when_the_download_is_done(tmp_path):
 
 def test_the_daemon_joins_the_dht(tmp_path):
     """Most magnets carry no trackers and never resolve without it."""
-    from dl import config, daemon
+    from firelink import config, daemon
 
     args = daemon.aria2_args(config.defaults(), tmp_path, 6810, "secret")
     assert "--enable-dht=true" in args
@@ -139,22 +139,22 @@ def test_the_daemon_joins_the_dht(tmp_path):
 
 
 def test_the_dht_table_is_kept_with_the_rest_of_the_state(tmp_path):
-    from dl import config, daemon
+    from firelink import config, daemon
 
     args = daemon.aria2_args(config.defaults(), tmp_path, 6810, "secret")
     assert f"--dht-file-path={tmp_path / 'dht.dat'}" in args
 
 
 def test_the_daemon_follows_a_torrent_into_its_transfer(tmp_path):
-    from dl import config, daemon
+    from firelink import config, daemon
 
     args = daemon.aria2_args(config.defaults(), tmp_path, 6810, "secret")
     assert "--follow-torrent=true" in args
 
 
 def test_add_torrent_sends_the_file_and_records_the_time(tmp_path, monkeypatch):
-    from dl import started
-    from dl.rpc import Aria2
+    from firelink import started
+    from firelink.rpc import Aria2
 
     blob = tmp_path / "x.torrent"
     blob.write_bytes(b"d4:infod4:name1:aee")
@@ -177,7 +177,7 @@ def test_add_torrent_sends_the_file_and_records_the_time(tmp_path, monkeypatch):
 
 def test_the_command_line_hands_a_local_torrent_to_add_torrent(tmp_path, sandbox_cfg):
     """addUri takes somewhere to fetch from; this is already here."""
-    from dl import cli
+    from firelink import cli
 
     blob = tmp_path / "x.torrent"
     blob.write_bytes(b"d4:infod4:name1:aee")
@@ -199,7 +199,7 @@ def test_the_command_line_hands_a_local_torrent_to_add_torrent(tmp_path, sandbox
 
 
 def test_a_magnet_still_goes_through_add_uri(sandbox_cfg):
-    from dl import cli
+    from firelink import cli
 
     seen = {}
 
@@ -215,7 +215,7 @@ def test_a_magnet_still_goes_through_add_uri(sandbox_cfg):
 
 def test_a_remote_torrent_url_still_goes_through_add_uri(sandbox_cfg):
     """aria2 fetches it and follows it into the transfer by itself."""
-    from dl import cli
+    from firelink import cli
 
     seen = {}
 
@@ -238,7 +238,7 @@ def _complete(tmp_path, name="debian.iso", where=None):
 def test_a_plain_download_still_uses_the_url_to_decide_it_was_not_pinned(tmp_path, sandbox_cfg):
     """The existing rule, unchanged: an http download that is not where its own
     URL would have put it was pinned."""
-    from dl import hook
+    from firelink import hook
 
     pinned = tmp_path / "pinned"
     landed = _complete(tmp_path, where=pinned)
@@ -247,16 +247,16 @@ def test_a_plain_download_still_uses_the_url_to_decide_it_was_not_pinned(tmp_pat
 
 def test_the_seeding_stop_travels_with_the_download(sandbox_cfg, tmp_path):
     """A daemon started before torrents existed never saw --seed-time=0, and
-    dl adopts a running daemon rather than restarting it."""
-    from dl import cli
-    from dl.routing import OTHER
+    firelink adopts a running daemon rather than restarting it."""
+    from firelink import cli
+    from firelink.routing import OTHER
 
     options = cli.add_options(sandbox_cfg, cli.Resolution(tmp_path, OTHER))
     assert options["seed-time"] == "0"
 
 
 def test_the_arguments_a_daemon_started_with_are_remembered(tmp_path):
-    from dl import config, daemon
+    from firelink import config, daemon
 
     args = daemon.aria2_args(config.defaults(), tmp_path, 6810, "secret")
     assert daemon.args_signature(args) == daemon.args_signature(list(args))
@@ -265,7 +265,7 @@ def test_the_arguments_a_daemon_started_with_are_remembered(tmp_path):
 
 def test_a_daemon_with_the_arguments_it_wanted_is_left_alone(tmp_path, monkeypatch):
     """Restarting on every command would be worse than the problem."""
-    from dl import config, daemon
+    from firelink import config, daemon
 
     cfg = config.defaults()
     daemon.write_signature(tmp_path, daemon.args_signature(daemon.aria2_args(cfg, tmp_path, daemon.PORT, "s")))
@@ -285,9 +285,9 @@ def test_a_daemon_with_the_arguments_it_wanted_is_left_alone(tmp_path, monkeypat
 
 def test_a_daemon_started_before_a_setting_existed_is_stopped(tmp_path, monkeypatch):
     """The DHT cannot be turned on over RPC, so a daemon that predates it never
-    gets it however long dl runs. Stopping it is all this does — starting the
+    gets it however long firelink runs. Stopping it is all this does — starting the
     replacement belongs to the path that knows how to fail out loud."""
-    from dl import config, daemon
+    from firelink import config, daemon
 
     daemon.write_signature(tmp_path, "from-an-older-dl")
     daemon.write_pid(tmp_path, 4242)
@@ -307,7 +307,7 @@ def test_a_daemon_started_before_a_setting_existed_is_stopped(tmp_path, monkeypa
 
 
 def test_a_busy_daemon_is_never_stopped_under_a_download(tmp_path, monkeypatch):
-    from dl import config, daemon
+    from firelink import config, daemon
 
     daemon.write_signature(tmp_path, "from-an-older-dl")
     restarted = []
@@ -325,8 +325,8 @@ def test_a_busy_daemon_is_never_stopped_under_a_download(tmp_path, monkeypatch):
 
 
 def test_an_unreachable_daemon_is_not_stopped_from_here(tmp_path, monkeypatch):
-    from dl import config, daemon
-    from dl.rpc import Aria2Unreachable
+    from firelink import config, daemon
+    from firelink.rpc import Aria2Unreachable
 
     daemon.write_signature(tmp_path, "older")
     restarted = []
@@ -344,7 +344,7 @@ def test_an_unreachable_daemon_is_not_stopped_from_here(tmp_path, monkeypatch):
 
 
 def test_spawning_records_the_signature(tmp_path, monkeypatch):
-    from dl import config, daemon
+    from firelink import config, daemon
 
     monkeypatch.setattr(daemon.subprocess, "Popen", lambda *a, **k: type("P", (), {"pid": 7})())
     cfg = config.defaults()
@@ -356,7 +356,7 @@ def test_spawning_records_the_signature(tmp_path, monkeypatch):
 def test_a_restart_that_cannot_bind_is_an_error_not_a_dead_client(tmp_path, monkeypatch):
     """It killed the daemon, could not bind the port back, and handed out a
     client pointing at nothing. Everything downstream then raised."""
-    from dl import config, daemon
+    from firelink import config, daemon
 
     daemon.write_signature(tmp_path, "from-an-older-dl")
     daemon.write_pid(tmp_path, 4242)
@@ -384,7 +384,7 @@ def test_a_port_just_released_is_still_bindable(tmp_path):
     a probe without SO_REUSEADDR reads that as somebody else holding the port."""
     import socket
 
-    from dl import daemon
+    from firelink import daemon
 
     holder = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     holder.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -398,9 +398,9 @@ def test_a_port_just_released_is_still_bindable(tmp_path):
 async def test_the_preview_survives_a_daemon_that_went_away(sandbox_cfg, tmp_path, monkeypatch):
     """Queuing runs inside the preview's own event loop, so an error there is a
     traceback across the terminal rather than a message."""
-    from dl.rpc import Aria2Unreachable
-    from dl.tui import preview as preview_module
-    from dl.tui.preview import PreviewApp
+    from firelink.rpc import Aria2Unreachable
+    from firelink.tui import preview as preview_module
+    from firelink.tui.preview import PreviewApp
     from tests.test_app import FakeClient
 
     monkeypatch.setattr(preview_module, "STATE_DIR", tmp_path)
@@ -419,9 +419,9 @@ async def test_the_preview_survives_a_daemon_that_went_away(sandbox_cfg, tmp_pat
 async def test_the_preview_follows_a_torrent_into_its_transfer(sandbox_cfg, tmp_path, monkeypatch):
     """A .torrent or a magnet completes in seconds and aria2 starts a different
     gid for the actual download. The preview closed on the first one, so it
-    shut just as the transfer began and you had to run dl again."""
-    from dl.tui import preview as preview_module
-    from dl.tui.preview import PreviewApp
+    shut just as the transfer began and you had to run firelink again."""
+    from firelink.tui import preview as preview_module
+    from firelink.tui.preview import PreviewApp
 
     monkeypatch.setattr(preview_module, "STATE_DIR", tmp_path)
 
@@ -468,7 +468,7 @@ async def test_the_preview_follows_a_torrent_into_its_transfer(sandbox_cfg, tmp_
 def test_the_torrent_file_goes_when_the_download_finishes(tmp_path):
     """Fetching a .torrent over http leaves it in the destination beside the
     thing it described, which nobody asked to download."""
-    from dl import hook
+    from firelink import hook
 
     blob = tmp_path / "debian.torrent"
     blob.write_bytes(b"d4:infoe")
@@ -482,7 +482,7 @@ def test_the_torrent_file_goes_when_the_download_finishes(tmp_path):
 
 
 def test_a_magnets_placeholder_is_not_mistaken_for_a_torrent_file(tmp_path):
-    from dl import hook
+    from firelink import hook
 
     class Client:
         def tell_status(self, gid):
@@ -492,7 +492,7 @@ def test_a_magnets_placeholder_is_not_mistaken_for_a_torrent_file(tmp_path):
 
 
 def test_a_download_that_followed_nothing_has_no_torrent_to_drop():
-    from dl import hook
+    from firelink import hook
 
     class Client:
         def tell_status(self, gid):
@@ -502,8 +502,8 @@ def test_a_download_that_followed_nothing_has_no_torrent_to_drop():
 
 
 def test_a_vanished_parent_is_quiet(tmp_path):
-    from dl import hook
-    from dl.rpc import Aria2Error
+    from firelink import hook
+    from firelink.rpc import Aria2Error
 
     class Client:
         def tell_status(self, gid):
@@ -514,7 +514,7 @@ def test_a_vanished_parent_is_quiet(tmp_path):
 
 def test_deleting_a_torrent_takes_the_torrent_file_with_it(tmp_path):
     """d then 'from disk' left the .torrent aria2 fetched to start it."""
-    from dl.tui import queueing
+    from firelink.tui import queueing
 
     iso = tmp_path / "debian.iso"
     iso.write_bytes(b"x" * 10)
@@ -534,7 +534,7 @@ def test_deleting_a_torrent_takes_the_torrent_file_with_it(tmp_path):
 def test_deleting_a_multi_file_torrent_removes_the_whole_folder(tmp_path):
     """A multi-file torrent is a folder, and unlink cannot remove one — the
     call raised, was swallowed, and every file stayed."""
-    from dl.tui import queueing
+    from firelink.tui import queueing
 
     folder = tmp_path / "Some Album"
     folder.mkdir()
@@ -546,7 +546,7 @@ def test_deleting_a_multi_file_torrent_removes_the_whole_folder(tmp_path):
 
 
 def test_deleting_a_single_file_is_unchanged(tmp_path):
-    from dl.tui import queueing
+    from firelink.tui import queueing
 
     landed = tmp_path / "a.iso"
     landed.write_bytes(b"x")
@@ -557,7 +557,7 @@ def test_deleting_a_single_file_is_unchanged(tmp_path):
 
 
 def test_dropping_a_source_torrent_for_a_plain_download_does_nothing(tmp_path):
-    from dl.tui import queueing
+    from firelink.tui import queueing
 
     class Client:
         def tell_status(self, gid):
@@ -570,8 +570,8 @@ async def test_delete_from_disk_clears_the_torrent_too(sandbox_cfg, tmp_path, mo
     """End to end through the key: d, then 'from disk'."""
     from textual.widgets import Button
 
-    from dl.tui import app as app_module
-    from dl.tui.app import DlApp
+    from firelink.tui import app as app_module
+    from firelink.tui.app import FirelinkApp
     from tests.test_app import FakeClient
 
     monkeypatch.setattr(app_module, "STATE_DIR", tmp_path / "state")
@@ -594,7 +594,7 @@ async def test_delete_from_disk_clears_the_torrent_too(sandbox_cfg, tmp_path, mo
         else {"gid": "parent", "files": [{"path": str(blob), "uris": []}]}
     )
 
-    app = DlApp(sandbox_cfg, client)
+    app = FirelinkApp(sandbox_cfg, client)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("d")
@@ -606,7 +606,7 @@ async def test_delete_from_disk_clears_the_torrent_too(sandbox_cfg, tmp_path, mo
 
 
 def test_a_magnet_goes_to_the_torrents_folder(sandbox_cfg):
-    from dl import routing
+    from firelink import routing
 
     where = routing.resolve(MAGNET, "", sandbox_cfg)
     assert where.path == sandbox_cfg.categories["torrents"].dir
@@ -614,14 +614,14 @@ def test_a_magnet_goes_to_the_torrents_folder(sandbox_cfg):
 
 
 def test_a_torrent_url_goes_to_the_torrents_folder(sandbox_cfg):
-    from dl import routing
+    from firelink import routing
 
     where = routing.resolve("https://e.com/thing.torrent", "", sandbox_cfg)
     assert where.path == sandbox_cfg.categories["torrents"].dir
 
 
 def test_a_local_torrent_goes_to_the_torrents_folder(tmp_path, sandbox_cfg):
-    from dl import routing
+    from firelink import routing
 
     blob = tmp_path / "x.torrent"
     blob.write_bytes(b"d4:infoe")
@@ -629,19 +629,19 @@ def test_a_local_torrent_goes_to_the_torrents_folder(tmp_path, sandbox_cfg):
 
 
 def test_a_plain_download_is_unaffected_by_any_of_this(sandbox_cfg):
-    from dl import routing
+    from firelink import routing
 
     assert routing.resolve("https://e.com/a.iso", "", sandbox_cfg).category.name == "iso"
 
 
 def test_dash_d_still_beats_the_torrents_folder(tmp_path, sandbox_cfg):
-    from dl import routing
+    from firelink import routing
 
     assert routing.resolve(MAGNET, "", sandbox_cfg, explicit_dir=tmp_path).path == tmp_path
 
 
 def test_a_config_naming_a_torrents_category_uses_its_folder(tmp_path, sandbox_cfg):
-    from dl import config, routing
+    from firelink import config, routing
 
     cats = dict(sandbox_cfg.categories)
     cats["torrents"] = config.Category("torrents", tmp_path / "Swarm", ("torrent",), "🧲", "#888888")
@@ -651,7 +651,7 @@ def test_a_config_naming_a_torrents_category_uses_its_folder(tmp_path, sandbox_c
 
 def test_a_config_without_one_still_gets_a_torrents_folder(sandbox_cfg):
     """Deleting a category is allowed, and a torrent still needs somewhere."""
-    from dl import config, routing
+    from firelink import config, routing
 
     cats = {n: c for n, c in sandbox_cfg.categories.items() if n != "torrents"}
     cfg = config.replace(sandbox_cfg, categories=cats)
@@ -659,7 +659,7 @@ def test_a_config_without_one_still_gets_a_torrents_folder(sandbox_cfg):
 
 
 def test_the_defaults_carry_a_torrents_category():
-    from dl import config
+    from firelink import config
 
     assert "torrents" in config.DEFAULT_CATEGORIES
     assert config.DEFAULT_CATEGORIES["torrents"].dir.name == "Torrents"
@@ -668,7 +668,7 @@ def test_the_defaults_carry_a_torrents_category():
 
 def test_a_finished_torrent_is_not_moved_out_of_the_torrents_folder(tmp_path, sandbox_cfg):
     """It was asked to live there, whatever it turned out to contain."""
-    from dl import config, hook
+    from firelink import config, hook
 
     where = tmp_path / "Torrents"
     where.mkdir()
@@ -684,7 +684,7 @@ def test_a_finished_torrent_is_not_moved_out_of_the_torrents_folder(tmp_path, sa
 
 
 def test_a_finished_plain_download_still_moves(tmp_path, sandbox_cfg):
-    from dl import config, hook
+    from firelink import config, hook
 
     cfg = config.replace(
         sandbox_cfg, general=config.replace(sandbox_cfg.general, default_dir=tmp_path)
@@ -698,7 +698,7 @@ def test_a_finished_plain_download_still_moves(tmp_path, sandbox_cfg):
 
 
 def test_a_torrent_row_is_labelled_a_torrent(sandbox_cfg):
-    from dl.tui.table import row_from_status
+    from firelink.tui.table import row_from_status
 
     item = {
         "gid": "g1", "status": "active", "totalLength": "10", "completedLength": "1",

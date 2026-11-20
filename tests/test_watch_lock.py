@@ -1,4 +1,4 @@
-"""The clipboard watcher counts as a copy of dl, not one of its commands.
+"""The clipboard watcher counts as a copy of firelink, not one of its commands.
 
 It has no window, but it runs until stopped and queues downloads while it
 does — two of those, or one beside a dashboard, is two copies acting on the
@@ -9,7 +9,7 @@ import os
 
 import pytest
 
-from dl import instance, watch
+from firelink import instance, watch
 
 
 @pytest.fixture

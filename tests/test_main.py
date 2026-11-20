@@ -1,7 +1,7 @@
 import pytest
 
-from dl import __main__ as entry
-from dl.rpc import Aria2Error, Aria2Unreachable
+from firelink import __main__ as entry
+from firelink.rpc import Aria2Error, Aria2Unreachable
 
 
 def test_help_exits_clean(capsys):
@@ -13,7 +13,7 @@ def test_unreachable_daemon_prints_a_message_not_a_traceback(monkeypatch, capsys
     monkeypatch.setattr(entry, "_run", lambda _a: (_ for _ in ()).throw(Aria2Unreachable("boom")))
     assert entry.main(["ls"]) == 1
     err = capsys.readouterr().err
-    assert "dl: boom" in err
+    assert "firelink: boom" in err
     assert "Traceback" not in err
 
 
@@ -34,7 +34,7 @@ class StubClient:
 
 
 def _wire(monkeypatch, tmp_path, isatty, calls):
-    from dl import cli, config, daemon
+    from firelink import cli, config, daemon
 
     monkeypatch.setattr(entry, "CONFIG_FILE", tmp_path / "config.toml")
     monkeypatch.setattr(config, "STATE_DIR", tmp_path)
@@ -75,7 +75,7 @@ def test_no_preview_flag_suppresses_attachment(monkeypatch, tmp_path):
 
 
 def test_no_preview_flag_is_not_treated_as_a_url(monkeypatch, tmp_path):
-    from dl import cli
+    from firelink import cli
 
     seen = []
     calls = []
@@ -91,7 +91,7 @@ def test_no_preview_flag_is_not_treated_as_a_url(monkeypatch, tmp_path):
 
 
 def test_failed_add_returns_one_without_attaching(monkeypatch, tmp_path):
-    from dl import cli
+    from firelink import cli
 
     calls = []
     _wire(monkeypatch, tmp_path, True, calls)
@@ -101,7 +101,7 @@ def test_failed_add_returns_one_without_attaching(monkeypatch, tmp_path):
 
 
 def test_partial_add_still_attaches_for_the_successes(monkeypatch, tmp_path):
-    from dl import cli
+    from firelink import cli
 
     calls = []
     _wire(monkeypatch, tmp_path, True, calls)
@@ -128,7 +128,7 @@ def test_interactive_run_goes_through_the_picker(monkeypatch, tmp_path):
 
 
 def test_proxy_flag_reaches_cmd_add(monkeypatch, tmp_path):
-    from dl import cli
+    from firelink import cli
 
     seen = {}
     calls = []
@@ -148,7 +148,7 @@ def test_proxy_flag_reaches_cmd_add(monkeypatch, tmp_path):
 
 
 def _record_add(monkeypatch, seen):
-    from dl import cli
+    from firelink import cli
 
     def record(urls, cfg, client, explicit_dir, chosen=None, proxy=False,
                decisions=None, headers=None, digest=""):
@@ -190,7 +190,7 @@ def test_a_youtube_url_takes_the_yt_dlp_route(monkeypatch, tmp_path):
     _wire(monkeypatch, tmp_path, True, calls)
     monkeypatch.setattr(entry.ytdlp, "available", lambda: True)
     monkeypatch.setattr(
-        "dl.tui.ytflow.run_youtube",
+        "firelink.tui.ytflow.run_youtube",
         lambda cfg, urls, proxy=False: (seen.update(urls=urls, proxy=proxy) or ([], False)),
     )
     assert entry.main(["https://youtu.be/abc123"]) == 0
@@ -202,7 +202,7 @@ def test_a_normal_url_never_takes_the_yt_dlp_route(monkeypatch, tmp_path):
     calls = []
     _wire(monkeypatch, tmp_path, True, calls)
     monkeypatch.setattr(
-        "dl.tui.ytflow.run_youtube",
+        "firelink.tui.ytflow.run_youtube",
         lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not be called")),
     )
     assert entry.main(["https://e.com/a.iso"]) == 0
@@ -240,7 +240,7 @@ def test_a_cancelled_picker_returns_130(monkeypatch, tmp_path):
 
 
 def test_a_cancelled_picker_never_queues(monkeypatch, tmp_path):
-    from dl import cli
+    from firelink import cli
 
     added = []
     calls = []
@@ -292,7 +292,7 @@ def test_a_bad_url_is_rejected_before_the_picker_opens(monkeypatch, tmp_path, ca
     _wire(monkeypatch, tmp_path, True, calls)
     monkeypatch.undo()
     _wire(monkeypatch, tmp_path, True, calls)
-    from dl import cli
+    from firelink import cli
 
     monkeypatch.setattr(cli, "cmd_add", lambda *a, **k: (1, []))
     assert entry.main(["not-a-url"]) == 1
@@ -302,7 +302,7 @@ def test_a_bad_url_is_rejected_before_the_picker_opens(monkeypatch, tmp_path, ca
 def test_history_never_starts_the_daemon(tmp_path, monkeypatch, capsys):
     """Printing the past has nothing to ask aria2, and waiting on a daemon
     start would be a slow surprise for a read-only command."""
-    from dl import config as config_module
+    from firelink import config as config_module
 
     started = []
     monkeypatch.setattr(entry.daemon, "ensure_running", lambda *a, **k: started.append(1))
@@ -318,7 +318,7 @@ def test_history_is_a_known_subcommand():
 
 
 def test_usage_mentions_history():
-    assert "dl history" in entry.USAGE
+    assert "firelink history" in entry.USAGE
 
 
 def test_dash_h_is_collected_and_removed_from_the_urls(monkeypatch):
@@ -351,7 +351,7 @@ def test_usage_mentions_the_header_flag():
 def test_the_version_flag_prints_the_version(monkeypatch, capsys):
     monkeypatch.setattr(entry.install, "version", lambda: "0.2.0")
     assert entry.main(["--version"]) == 0
-    assert capsys.readouterr().out.strip() == "dl 0.2.0"
+    assert capsys.readouterr().out.strip() == "firelink 0.2.0"
 
 
 def test_the_version_flag_beats_a_url(monkeypatch, capsys):
@@ -363,3 +363,16 @@ def test_the_version_flag_beats_a_url(monkeypatch, capsys):
 
 def test_the_version_flag_is_documented():
     assert "--version" in entry.USAGE
+
+
+def test_an_open_old_window_is_reported_not_a_traceback(monkeypatch, capsys):
+    from firelink import legacy
+
+    def refuse(*_dirs):
+        raise legacy.LegacyInUse("an old `dl` window is open (pid 42)")
+
+    monkeypatch.setattr(legacy, "adopt", refuse)
+    assert entry.main(["ls"]) == 1
+    err = capsys.readouterr().err
+    assert "firelink: an old `dl` window is open (pid 42)" in err
+    assert "Traceback" not in err

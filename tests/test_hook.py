@@ -5,7 +5,7 @@ import types
 
 import pytest
 
-from dl import config, hook
+from firelink import config, hook
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import pytest
 
-from dl import youtube
-from dl.youtube import Choices
+from firelink import youtube
+from firelink.youtube import Choices
 
 
 @pytest.mark.parametrize(

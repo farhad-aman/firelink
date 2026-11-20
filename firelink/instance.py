@@ -3,7 +3,7 @@ from pathlib import Path
 
 from .daemon import alive
 
-LOCK = "dl.lock"
+LOCK = "firelink.lock"
 
 
 def _read(state: Path) -> int:
@@ -26,7 +26,7 @@ def holder(state: Path) -> int:
 def acquire(state: Path, pid: int | None = None) -> bool:
     """Claim the dashboard, or report that someone else holds it.
 
-    O_EXCL rather than read-then-write: two `dl` started together both saw an
+    O_EXCL rather than read-then-write: two `firelink` started together both saw an
     empty lock and both went on to take it.
     """
     mine = os.getpid() if pid is None else pid

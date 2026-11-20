@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from dl import config, spotify
+from firelink import config, spotify
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

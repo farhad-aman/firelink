@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from dl.rpc import Aria2, Aria2Error, Aria2Unreachable
+from firelink.rpc import Aria2, Aria2Error, Aria2Unreachable
 
 SECRET = "s3cr3t"
 

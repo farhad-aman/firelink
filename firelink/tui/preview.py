@@ -7,7 +7,7 @@ from ..config import STATE_DIR, Category
 from ..rpc import Aria2Error, Aria2Unreachable
 from ..format import human_bytes, human_duration, human_speed
 from ..theme import glyph, select
-from .app import DlApp
+from .app import FirelinkApp
 from .modals import DuplicateModal
 from .queueing import in_flight
 from .picker import CancelAll, PickerScreen
@@ -57,15 +57,15 @@ def summarise(results: list[dict], icons: bool = True) -> list[str]:
             lines.append(f"  {mark['fail']} {name}   {item.get('error') or 'failed'}")
     if running:
         lines.append(
-            f"  {mark['wait']} {running} still downloading — `dl` to watch, `dl ls` to list"
+            f"  {mark['wait']} {running} still downloading — `firelink` to watch, `firelink ls` to list"
         )
     return lines
 
 
-class PreviewApp(DlApp):
+class PreviewApp(FirelinkApp):
     """Dashboard scoped to a set of gids, exiting once they all settle.
 
-    Textual merges BINDINGS across the MRO, so keys inherited from DlApp cannot
+    Textual merges BINDINGS across the MRO, so keys inherited from FirelinkApp cannot
     be removed by redeclaring a shorter list — they are disabled by overriding
     their action methods instead.
     """
@@ -220,7 +220,7 @@ class PreviewApp(DlApp):
         A .torrent or a magnet finishes in seconds and aria2 starts a
         different gid for the transfer it describes. Watching only what was
         queued meant the preview closed at the moment the download began,
-        and dl had to be opened again to see it.
+        and firelink had to be opened again to see it.
         """
         moved = False
         for gid in list(self.watch):
@@ -270,7 +270,7 @@ def run_preview(
     """
     where = state or STATE_DIR
     if instance.holder(where):
-        return [f"  {glyph('⬇', select(cfg).icons)} queued — watch it in the open dl window"], False
+        return [f"  {glyph('⬇', select(cfg).icons)} queued — watch it in the open firelink window"], False
     if not instance.acquire(where):
         return [f"  {glyph('⬇', select(cfg).icons)} queued"], False
     try:
