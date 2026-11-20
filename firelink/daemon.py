@@ -317,6 +317,9 @@ def _spawn(cfg: Config, state: Path, port: int, secret: str) -> None:
             env=spawn_env(),
         )
     write_pid(state, process.pid)
+    from . import schedule
+
+    schedule.start_if_needed(cfg, state, _config_path())
 
 
 _LISTEN_PORT = re.compile(r"--rpc-listen-port=(\d+)")

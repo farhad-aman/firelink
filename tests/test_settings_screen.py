@@ -550,3 +550,29 @@ async def test_escape_returns_nothing_from_the_categories_screen(cfg):
         await pilot.press("escape")
         await pilot.pause()
     assert app.result == {}
+
+
+async def test_schedule_windows_can_be_added_and_saved(cfg):
+    from firelink.tui.settings import ScheduleScreen
+
+    screen = ScheduleScreen(cfg)
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen.add_rule("01:00-07:00 | off")
+        screen.add_rule("07:00-01:00 | 2m")
+        await pilot.pause()
+        assert screen.payload() == {("schedule",): {"01:00-07:00": "0", "07:00-01:00": "2M"}}
+
+
+async def test_a_schedule_window_the_daemon_could_not_follow_is_refused(cfg):
+    from firelink.tui.settings import ScheduleScreen
+
+    screen = ScheduleScreen(cfg)
+    app = Host(screen)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen.add_rule("1am-7am | fast")
+        await pilot.pause()
+        assert screen.rules == []
+        assert screen.error

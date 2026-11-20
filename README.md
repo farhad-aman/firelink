@@ -25,6 +25,13 @@ brew upgrade firelink    # or just `brew upgrade` — it rides along
 brew uninstall firelink
 ```
 
+Homebrew installs tab completion for zsh, bash and fish. From source, add one
+line to your shell's startup file:
+
+```bash
+source <(firelink completion zsh)     # or bash; fish: firelink completion fish | source
+```
+
 ### From source
 
 For working on firelink itself. The install is editable, so edits take effect
@@ -64,6 +71,9 @@ firelink history [n]           list finished downloads (--failed, --json)
 firelink pause <gid|all>       firelink resume <gid|all>   firelink rm <gid>
 firelink watch                 queue URLs as you copy them
 firelink kill                  stop the daemon
+firelink limit [2M|off|auto]   show or set the global speed limit
+firelink doctor                check the tools, config, proxy and daemon
+firelink completion <shell>    print a zsh, bash or fish completion script
 ```
 
 Before anything is queued, `firelink` asks where to put each file. The routed folder is
@@ -167,6 +177,26 @@ left alone with a note rather than guessed at, and a YouTube link is taken at
 best quality — run `firelink <url>` when you want the choice.
 
 Magnet links and `.torrent` URLs work anywhere a URL does.
+
+## Speed limit and schedule
+
+`firelink limit 2M` caps every download together at 2 MB/s, at once.
+`firelink limit off` lifts it, `firelink limit auto` hands control back to the
+schedule, and `firelink limit` alone says what applies now and why. Rates are a
+number with `K` or `M`.
+
+A schedule in the config changes the limit by time of day:
+
+```toml
+[schedule]
+"01:00-07:00" = "off"
+"07:00-01:00" = "2M"
+```
+
+A small keeper process applies it. It starts with the daemon, checks every 30
+seconds, and stops when the daemon stops — nothing runs while nothing is
+downloading. A limit set while no daemon runs is kept and applied when one
+starts.
 
 ## Duplicates
 
@@ -538,6 +568,7 @@ models 🧠, code 💻.
 | `~/.local/state/firelink/yt/*.part` | yt-dlp fragments, removed with their job |
 | `~/.local/state/firelink/hooks/*.sh` | generated aria2 completion hooks |
 | `~/.local/state/firelink/aria2.log` | aria2 errors |
+| `~/.local/state/firelink/limit` | the limit set by `firelink limit`, until `auto` |
 
 RPC binds `127.0.0.1` only and always requires the secret, so no other local
 process can queue downloads to arbitrary paths.
@@ -555,6 +586,11 @@ From a source install, `make install` also removes the old `~/.local/bin/dl`
 shim and its venv in `~/.local/share/dl`.
 
 ## Troubleshooting
+
+**Start with `firelink doctor`.** It checks aria2, yt-dlp's age, ffmpeg and
+its subtitle support, deno, the config, the download folders, the proxy, the
+daemon port, stray daemons and duplicate installs, and prints the fix under
+each problem. It exits non-zero only when something is broken.
 
 **`aria2c not found`** — `brew install aria2`.
 

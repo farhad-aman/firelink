@@ -30,11 +30,13 @@ firelink — download manager
   firelink kill                  stop the daemon
   firelink kill --strays         find daemons older versions left behind
   firelink doctor                check the tools, config, proxy and daemon
+  firelink limit [2M|off|auto]   show or set the global speed limit
   firelink completion <shell>    print a zsh, bash or fish completion script
 """
 
 SUBCOMMANDS = {
-    "ls", "history", "pause", "resume", "rm", "watch", "kill", "doctor", "completion", "help"
+    "ls", "history", "pause", "resume", "rm", "watch", "kill", "doctor", "limit", "completion",
+    "help",
 }
 
 # Flags each subcommand understands. Anything else is a mistake worth saying so
@@ -130,6 +132,24 @@ def _run_spotify(cfg, urls: list[str], interactive: bool) -> int:
     return 130 if cancelled else 0
 
 
+def _run_limit(cfg, rest: list[str]) -> int:
+    """No daemon is started for this: a limit set while nothing runs is kept
+    and applied when one starts."""
+    from . import schedule
+    from .rpc import Aria2
+
+    state = config.STATE_DIR
+    secret = daemon.read_secret(state)
+    client = (
+        Aria2("127.0.0.1", daemon.PORT, secret)
+        if daemon.port_status(daemon.PORT, secret) == "ours"
+        else None
+    )
+    return cli.cmd_limit(
+        rest, cfg, state, client, keep=lambda: schedule.spawn_keeper(state, CONFIG_FILE)
+    )
+
+
 def _run(args: list[str]) -> int:
     if args and args[0] in ("-h", "--help", "help"):
         print(USAGE)
@@ -192,6 +212,9 @@ def _run(args: list[str]) -> int:
         from . import doctor
 
         return doctor.cmd_doctor(cfg, config.STATE_DIR, CONFIG_FILE)
+
+    if command == "limit":
+        return _run_limit(cfg, args[1:])
 
     if command == "history":
         # Reading a file needs no daemon, and starting one to print it would be

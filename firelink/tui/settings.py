@@ -7,7 +7,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Static
 
 from .. import config as config_module
-from .. import settings, theme as theme_module, tomlio
+from .. import schedule, settings, theme as theme_module, tomlio
 from ..format import pad
 from ..config import Config
 
@@ -195,7 +195,7 @@ SECTIONS = (
     ("Spotify", settings.SPOTIFY),
     ("Hooks", settings.HOOKS),
 )
-LIST_ROWS = ("Proxy", "Headers", "Categories")
+LIST_ROWS = ("Proxy", "Headers", "Schedule", "Categories")
 SECTION_ICONS = {
     "General": "⚙️",
     "Limits": "🚦",
@@ -204,6 +204,7 @@ SECTION_ICONS = {
     "Hooks": "🪝",
     "Proxy": "🌐",
     "Headers": "🏷️",
+    "Schedule": "⏰",
     "Categories": "🗂️",
 }
 
@@ -289,6 +290,8 @@ class SettingsMenuScreen(IconMixin, ModalScreen[None]):
             self.app.push_screen(ProxyScreen(self.cfg), self._saved)
         if name == "Headers":
             self.app.push_screen(HeadersScreen(self.cfg), self._saved)
+        if name == "Schedule":
+            self.app.push_screen(ScheduleScreen(self.cfg), self._saved)
         if name == "Categories":
             self.app.push_screen(CategoriesScreen(self.cfg), self._saved)
 
@@ -304,6 +307,9 @@ class SettingsMenuScreen(IconMixin, ModalScreen[None]):
             return
         self.cfg = config_module.load(self.config_file)
         self.app.reload_config(self.cfg)
+        # A schedule added here has no keeper until the next daemon start;
+        # one already running sees the change on its next tick.
+        schedule.start_if_needed(self.cfg, config_module.STATE_DIR, self.config_file)
         self.app.notify("settings saved")
 
     def action_close(self) -> None:
@@ -583,6 +589,59 @@ class HeadersScreen(ListEditScreen):
             return
         host, key, value = parts
         self.rules.append((host.lower(), key, value))
+        self.cursor = len(self.rules) - 1
+        self.error = ""
+        self._repaint()
+
+    def commit(self, value: str) -> None:
+        self.add_rule(value)
+
+
+SCHEDULE_FORM = "HH:MM-HH:MM | rate (2M, 500K or off)"
+
+
+class ScheduleScreen(ListEditScreen):
+    """The global speed limit by time of day."""
+
+    heading = "Schedule"
+    hint = HEADER_HINT
+    placeholder = SCHEDULE_FORM
+
+    def __init__(self, cfg: Config):
+        super().__init__(cfg)
+        self.rules = [
+            (f"{w.start // 60:02d}:{w.start % 60:02d}-{w.end // 60:02d}:{w.end % 60:02d}", w.rate)
+            for w in cfg.schedule
+        ]
+
+    def length(self) -> int:
+        return len(self.rules)
+
+    def lines(self) -> list[str]:
+        if not self.rules:
+            return ["  (no schedule — no global limit unless `firelink limit` sets one)"]
+        return [
+            f"{'▌' if index == self.cursor else ' '} {pad(span, 14)} {'no limit' if rate == '0' else rate}"
+            for index, (span, rate) in enumerate(self.rules)
+        ]
+
+    def payload(self) -> dict:
+        return {("schedule",): dict(self.rules)}
+
+    def remove_selected(self) -> None:
+        del self.rules[self.cursor]
+
+    def add_rule(self, raw: str) -> None:
+        span, sep, rate = (piece.strip() for piece in raw.partition("|"))
+        try:
+            if not sep:
+                raise ValueError(f"write it as {SCHEDULE_FORM}")
+            [window] = config_module.schedule_from({span: rate})
+        except ValueError as exc:
+            self.error = f"  {self._g('⚠')}  {exc}"
+            self._repaint()
+            return
+        self.rules.append((span, window.rate))
         self.cursor = len(self.rules) - 1
         self.error = ""
         self._repaint()

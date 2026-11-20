@@ -36,6 +36,16 @@ class General:
 
 
 @dataclass(frozen=True)
+class Window:
+    """A time of day, in minutes since midnight, and the global limit for it.
+    start after end means the window runs past midnight."""
+
+    start: int
+    end: int
+    rate: str
+
+
+@dataclass(frozen=True)
 class Limits:
     per_download: str
     connections: int
@@ -66,6 +76,7 @@ class Config:
     hook_timeout: int = DEFAULT_HOOK_TIMEOUT
     spotify_id: str = ""
     spotify_secret: str = ""
+    schedule: tuple[Window, ...] = ()
 
 
 def _positive(value, fallback: int) -> int:
@@ -81,6 +92,38 @@ def parse_duration(text: str) -> int:
     if not m:
         raise ValueError(f"bad duration: {text!r}")
     return int(m.group(1)) * _MULTIPLIER[m.group(2)]
+
+
+_RATE = re.compile(r"^\d+[KM]?$")
+_CLOCK = re.compile(r"^(\d{2}):(\d{2})$")
+
+
+def valid_rate(text: str) -> str:
+    """A rate aria2 accepts, upper-cased, or ValueError. "off" is no limit."""
+    value = parse_rate(text).upper()
+    if not _RATE.match(value):
+        raise ValueError(f"bad rate: {text!r} — use a number with K or M, or off")
+    return value
+
+
+def _minute(clock: str) -> int:
+    found = _CLOCK.match(clock.strip())
+    if not found or int(found.group(1)) > 23 or int(found.group(2)) > 59:
+        raise ValueError(f"bad time: {clock!r} — use HH:MM")
+    return int(found.group(1)) * 60 + int(found.group(2))
+
+
+def schedule_from(raw: dict) -> tuple[Window, ...]:
+    windows = []
+    for span, rate in raw.items():
+        start, sep, end = str(span).partition("-")
+        if not sep:
+            raise ValueError(f"bad schedule window: {span!r} — use HH:MM-HH:MM")
+        window = Window(_minute(start), _minute(end), valid_rate(str(rate)))
+        if window.start == window.end:
+            raise ValueError(f"empty schedule window: {span!r}")
+        windows.append(window)
+    return tuple(windows)
 
 
 def parse_rate(text: str) -> str:
@@ -246,6 +289,7 @@ def _parse(target: Path) -> Config:
             if "timeout" in raw.get("hooks", {})
             else DEFAULT_HOOK_TIMEOUT
         ),
+        schedule=schedule_from(raw.get("schedule", {})),
     )
 
 
@@ -301,6 +345,13 @@ per_download = "off"
 connections  = 16
 splits       = 16
 min_split    = "1M"
+
+# A global limit by time of day, "HH:MM-HH:MM" = rate. A window that ends
+# before it starts runs past midnight. `firelink limit 2M` overrides it until
+# `firelink limit auto`.
+# [schedule]
+# "01:00-07:00" = "off"
+# "07:00-01:00" = "2M"
 
 [categories.video]
 dir  = "~/Movies/Downloads"

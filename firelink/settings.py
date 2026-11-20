@@ -10,7 +10,7 @@ _RATE = re.compile(r"^(\d+[KMG]?|off)$", re.IGNORECASE)
 _COLOUR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 # Settings whose own screen owns them, rather than a Field.
-LIST_SECTIONS = frozenset({"categories", "domains", "headers", "proxy", "proxy_domains"})
+LIST_SECTIONS = frozenset({"categories", "domains", "headers", "proxy", "proxy_domains", "schedule"})
 
 # Config attribute names the screen can reach. Named separately from the schema
 # because a Field's path is its TOML key, and the two differ: hooks.timeout is

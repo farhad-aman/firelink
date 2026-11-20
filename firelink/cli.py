@@ -409,3 +409,40 @@ def read_url_file(source: str) -> list[str]:
         for line in text.splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
+
+
+def cmd_limit(args: list[str], cfg: Config, state: Path, client, keep, minute: int | None = None) -> int:
+    """Show, set, lift or hand back the global speed limit.
+
+    client is None when no daemon runs: the setting is kept and applied by the
+    schedule keeper when one starts. keep starts that keeper.
+    """
+    from . import schedule
+    from .config import valid_rate
+
+    when = schedule.now_minute() if minute is None else minute
+    if not args:
+        rate, why = schedule.effective(state, cfg, when)
+        shown = "no limit" if rate == "0" else rate
+        print(f"  {shown}  — {why}")
+        return 0
+    wanted = args[0]
+    if wanted == "auto":
+        schedule.clear_override(state)
+    else:
+        try:
+            schedule.set_override(state, valid_rate(wanted))
+        except ValueError as exc:
+            print(f"firelink: {exc}", file=sys.stderr)
+            return 1
+    rate, why = schedule.effective(state, cfg, when)
+    if client is not None:
+        try:
+            schedule.apply(client, rate)
+        except (Aria2Error, Aria2Unreachable):
+            pass
+    if schedule.needed(cfg, state):
+        keep()
+    shown = "no limit" if rate == "0" else rate
+    print(f"  {shown}  — {why}")
+    return 0
